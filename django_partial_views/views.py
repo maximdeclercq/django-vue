@@ -10,7 +10,8 @@ class PartialView(TemplateView):
         template_names = super().get_template_names()
         if not self.request.is_ajax():
             return template_names
-        return ["/_".join(name.rsplit("/", 1)) for name in template_names]
+        return template_names
+        # return ["/_".join(name.rsplit("/", 1)) for name in template_names]
 
 
 class PartialActionView(PartialView):
@@ -22,6 +23,7 @@ class PartialActionView(PartialView):
             template_name, self.get_context_data(), request
         )
         if request.is_ajax():
+            print(content)
             soup = BeautifulSoup(content, "lxml")
             return JsonResponse(
                 {

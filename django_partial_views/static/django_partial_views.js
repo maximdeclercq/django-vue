@@ -1,24 +1,3 @@
-/* Routing logic */
-window.addEventListener('popstate', function () {
-  console.log(href)
-  history.pushState({}, '', href)
-  $.ajax({
-    type: 'GET',
-    url: href,
-    complete: function (jqXHR, textStatus) {
-      console.log(jqXHR)
-      updateElements(jqXHR.content)
-      // let partialViewsReplaceId = jqXHR.getResponseHeader('partial-views-replace-id')
-      // if (partialViewsReplaceId === null) {
-      // Not a partial view endpoint
-      //   window.dispatchEvent(new Event('popstate'))
-      //   return
-      // }
-      // console.log('test')
-    },
-  })
-})
-
 /* Rehook logic */
 function registerAjax() {
   $('[data-partial-link]').each(function () {
@@ -27,6 +6,7 @@ function registerAjax() {
     element.on('click.ajax', function (e) {
       e.preventDefault()
       let url = element.data('ajax-url') || element.prop('href') || element.prop('action') || window.location.href
+      history.pushState({}, '', url)
       element.prop('disabled', true)
       $.get({ url: url })
         .done(function (data) {
@@ -40,10 +20,15 @@ function registerAjax() {
     let element = $(this)
     element.ajaxForm({
       beforeSubmit: function (formData, jqForm, options) {
+        history.pushState({}, '', options.url)
         element.children().prop('disabled', true)
       },
-      complete: function (data, status) {
+      success: function (data, status) {
         updateElements(data)
+        element.children().prop('disabled', false)
+      },
+      error: function (data, status) {
+        history.back()
         element.children().prop('disabled', false)
       },
     })
@@ -54,6 +39,7 @@ function registerAjax() {
 function updateElements(data) {
   for (let key in data) {
     if (data.hasOwnProperty(key)) {
+      console.log(key, data[key])
       $(`*[data-partial-id="${key}"]`).replaceWith(data[key])
     }
   }
