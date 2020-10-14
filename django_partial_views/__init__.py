@@ -1,3 +1,4 @@
-from .views import PartialView, PartialActionView
+from .decorators import register_action
+from .views import PartialMixin, ActionMixin
 
-__all__ = ["PartialView", "PartialActionView"]
+__all__ = ["PartialMixin", "ActionMixin", "register_action"]

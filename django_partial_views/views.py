@@ -1,29 +1,19 @@
 from bs4 import BeautifulSoup
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render
 from django.template import loader
-from django.views.generic import TemplateView
 
 
-class PartialView(TemplateView):
-    def get_template_names(self):
-        template_names = super().get_template_names()
-        if not self.request.is_ajax():
-            return template_names
-        return template_names
-        # return ["/_".join(name.rsplit("/", 1)) for name in template_names]
+class PartialMixin:
+    """A mixin that returns a JSON with id's and their contents for partial parts of
+    the template to replace them."""
 
-
-class PartialActionView(PartialView):
-    action_registry = {}
-
-    def get(self, request, *args, **kwargs):
-        template_name = self.get_template_names()[0]
+    def get(self, request, template_name=None, *args, **kwargs):
         content = loader.render_to_string(
-            template_name, self.get_context_data(), request
+            template_name or self.get_template_names()[0],
+            self.get_context_data(),
+            request,
         )
         if request.is_ajax():
-            print(content)
             soup = BeautifulSoup(content, "lxml")
             return JsonResponse(
                 {
@@ -34,18 +24,33 @@ class PartialActionView(PartialView):
             )
         return HttpResponse(content)
 
+
+class ActionMixin(PartialMixin):
+    """A mixin class that makes it able to define buttons in templates that execute
+    functions and rerender the template.
+    """
+
     def post(self, request, *args, **kwargs):
-        if not request.is_ajax():
+        """Execute the specified action function and rerender the template."""
+        actions = [k for k in request.POST if k.startswith("action|")]
+        if not actions:
             return HttpResponse(status=400)
 
-        _, action, *params = next(
-            (k for k in request.POST if k.startswith("action|")), "|"
-        ).split("|")
-        template_name = self.get_template_names()[0]
-        if action:
-            function = f"_{action}"
-            if hasattr(self, function) and callable(getattr(self, function)):
-                getattr(self, function)(request, *params)
-                return render(request, template_name, self.get_context_data())
+        # Extract the action from the post name and check if it is callable
+        _, action, *params = actions[0].split("|")
+        if not action or not hasattr(self, action):
             return HttpResponse(status=400)
-        return super().get(request, *args, **kwargs)
+
+        function = getattr(self, action)
+        if (
+            not callable(function)
+            and not hasattr(function, "is_action")
+            or not function.is_action
+        ):
+            return HttpResponse(status=400)
+
+        # Call the action
+        function(request, *params)
+
+        # Render the original response
+        return super().get(request, function.template_name, *args, **kwargs)
