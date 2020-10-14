@@ -1,3 +1,18 @@
+/* Go back logic */
+window.addEventListener('popstate', function (event) {
+  if (event.state?.partial) {
+    $.get({ url: document.location })
+      .done(function (data) {
+        updateElements(data)
+      })
+      .fail(function (data) {
+        window.location.reload()
+      })
+  } else {
+    window.location.reload()
+  }
+})
+
 /* Rehook logic */
 function registerAjax() {
   $('[data-partial-link]').each(function () {
@@ -5,22 +20,24 @@ function registerAjax() {
     element.off('click.ajax')
     element.on('click.ajax', function (e) {
       e.preventDefault()
-      let url = element.data('ajax-url') || element.prop('href') || element.prop('action') || window.location.href
-      history.pushState({}, '', url)
+      let url = element.data('partial-url') || element.prop('href') || element.prop('action') || window.location.href
+      history.pushState({ partial: true }, '', url)
       element.prop('disabled', true)
       $.get({ url: url })
         .done(function (data) {
           element.prop('disabled', false)
-          updateElements(data, url)
+          updateElements(data)
         })
-        .fail(function (data) {})
+        .fail(function (data) {
+          console.log(data)
+        })
     })
   })
   $('[data-partial-form]').each(function () {
     let element = $(this)
     element.ajaxForm({
       beforeSubmit: function (formData, jqForm, options) {
-        history.pushState({}, '', options.url)
+        history.pushState({ partial: true }, '', options.url)
         element.children().prop('disabled', true)
       },
       success: function (data, status) {
@@ -39,7 +56,6 @@ function registerAjax() {
 function updateElements(data) {
   for (let key in data) {
     if (data.hasOwnProperty(key)) {
-      console.log(key, data[key])
       $(`*[data-partial-id="${key}"]`).replaceWith(data[key])
     }
   }
