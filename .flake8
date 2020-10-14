@@ -1,0 +1,11 @@
+[flake8]
+doctests = true
+format="%(path)s:%(row)d:%(col)d %(code)s: %(text)s (https://lintlyci.github.io/Flake8Rules/rules/%(code)s.html)"
+enable-extensions=G
+exclude = __pycache__, .tox, .git, app/migrations/, docs/, node_modules/, public/, venv/
+# ignore missing docstrings for now
+ignore = D100,D101,D102,D103,D104,D105,D106,D107
+max-complexity = 7
+max-line-length = 88
+show-source = true
+inline-quotes = double
