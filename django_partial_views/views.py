@@ -1,6 +1,13 @@
-from bs4 import BeautifulSoup
+from pprint import pprint
+
 from django.http import HttpResponse, JsonResponse
-from django.template import loader
+from django.shortcuts import render
+from django.template import TemplateDoesNotExist
+from django.template.backends.django import reraise
+from django.template.context import make_context
+from django.template.loader import select_template
+
+from django_partial_views.utils import get_fragments
 
 
 class PartialMixin:
@@ -8,21 +15,19 @@ class PartialMixin:
     the template to replace them."""
 
     def get(self, request, template_name=None, *args, **kwargs):
-        content = loader.render_to_string(
-            template_name or self.get_template_names()[0],
-            self.get_context_data(),
-            request,
-        )
-        if request.is_ajax():
-            soup = BeautifulSoup(content, "lxml")
-            return JsonResponse(
-                {
-                    item["data-partial-id"]: str(item)
-                    for item in soup.find_all()
-                    if "data-partial-id" in item.attrs
-                }
-            )
-        return HttpResponse(content)
+        template_name = (
+            [template_name] if template_name else []
+        ) + self.get_template_names()
+        context = self.get_context_data()
+
+        # Return normal response if the request wasn't made with AJAX
+        if not request.is_ajax():
+            return render(request, template_name, context)
+
+        t = select_template(template_name)
+        template, backend = t.template, t.backend
+        context = make_context(context, request, autoescape=backend.engine.autoescape)
+        return JsonResponse(get_fragments(request, template, context))
 
 
 class ActionMixin(PartialMixin):
