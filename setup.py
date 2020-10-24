@@ -2,7 +2,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="django-partial-views",
+    name="django-fluid",
     version="1.0",
     author="Maxim De Clercq",
     author_email="mdc@anter.io",

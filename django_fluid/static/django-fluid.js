@@ -1,6 +1,6 @@
-/* Go back logic */
+/* Return to previous page logic */
 window.addEventListener('popstate', function (event) {
-  if (event.state?.partial) {
+  if (event.state?.fluid) {
     $.get({ url: document.location })
       .done(function (data) {
         updateElements(data)
@@ -15,29 +15,32 @@ window.addEventListener('popstate', function (event) {
 
 /* Rehook logic */
 function registerAjax() {
-  $('[data-partial-link]').each(function () {
+  $('a[data-fluid]').each(function () {
     let element = $(this)
     element.off('click.ajax')
     element.on('click.ajax', function (e) {
       e.preventDefault()
-      let url = element.data('partial-url') || element.prop('href') || element.prop('action') || window.location.href
-      history.pushState({ partial: true }, '', url)
       element.prop('disabled', true)
+      showLoading()
+      let url = element.data('fluid-url') || element.prop('href') || element.prop('action') || window.location.href
+      history.pushState({ fluid: true }, '', url)
       $.get({ url: url })
         .done(function (data) {
-          element.prop('disabled', false)
           updateElements(data)
+          element.prop('disabled', false)
         })
         .fail(function (data) {
+          hideLoading()
           console.log(data)
         })
     })
   })
-  $('[data-partial-form]').each(function () {
+  $('form[data-fluid]').each(function () {
     let element = $(this)
     element.ajaxForm({
       beforeSubmit: function (formData, jqForm, options) {
-        history.pushState({ partial: true }, '', options.url)
+        showLoading()
+        history.pushState({ fluid: true }, '', options.url)
         element.children().prop('disabled', true)
       },
       success: function (data, status) {
@@ -52,11 +55,42 @@ function registerAjax() {
   })
 }
 
-/* Replacement logic */
+/* Loading logic */
+function showLoading() {
+  $('fluid-block').each(function () {
+    let fluidBlock = $(this)
+    fluidBlock.children().each(function () {
+      // Wait 300ms before showing loading
+      let element = $(this)
+      let overlay = $(`
+      <div 
+        class="d-flex justify-content-center align-items-center"
+        style="position: absolute; background: rgba(0, 0, 0, 0.3);"
+      >
+        <div class="spinner-border" role="status">
+          <span class="sr-only">Loading...</span>
+        </div>
+      </div>
+    `)
+        .width(element.width())
+        .height(element.height())
+        .css({ top: element.position().top, left: element.position().left })
+
+      setTimeout(function () {
+        // Check if element is still present
+        if (fluidBlock && element) {
+          overlay.prependTo(fluidBlock)
+        }
+      }, 300)
+    })
+  })
+}
+
+/* Element replacement logic */
 function updateElements(data) {
   for (let key in data) {
     if (data.hasOwnProperty(key)) {
-      $(`*[data-partial-id="${key}"]`).replaceWith(data[key])
+      $(`fluid-block[name="${key}"]`).replaceWith(data[key])
     }
   }
 }

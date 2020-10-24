@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/django-partial-views.iml" filepath="$PROJECT_DIR$/.idea/django-partial-views.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/django-fluid.iml" filepath="$PROJECT_DIR$/.idea/django-fluid.iml" />
     </modules>
   </component>
 </project>
