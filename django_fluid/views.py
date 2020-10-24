@@ -30,8 +30,8 @@ class FluidMixin:
                 if context.template is None:
                     with context.bind_template(template):
                         context.template_name = template.name
-                        return render_to_response(nodelist, context, request.is_ajax())
-                return render_to_response(nodelist, context, request.is_ajax())
+                        return render_to_response(request, context, nodelist)
+                return render_to_response(request, context, nodelist)
         except TemplateDoesNotExist as exc:
             reraise(exc, backend)
 

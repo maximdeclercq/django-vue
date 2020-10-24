@@ -23,6 +23,9 @@ INSTALLED_APPS = (
 To use this library, simply add FluidMixin to you template view and your view will become fluid!
 
 ```python
+from django.views.generic import TemplateView
+from django_fluid import FluidMixin
+
 class KittenView(FluidMixin, TemplateView):
     template_name = "kitten.html"
 ```
@@ -33,4 +36,3 @@ class KittenView(FluidMixin, TemplateView):
 - [ ] Wrap every dynamic content inside a custom HTML tag to replace it when refreshing.
 - [ ] Do some extensive testing on how stable this extension is.
 - [ ] Add documentation about FluidActionMixin.
-

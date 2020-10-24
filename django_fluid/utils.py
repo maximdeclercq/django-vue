@@ -1,5 +1,8 @@
+from urllib.parse import urlparse
+
 from bs4 import BeautifulSoup
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, HttpRequest
+from django.template import Context, NodeList
 from django.template.base import TextNode
 from django.template.loader_tags import (
     ExtendsNode,
@@ -8,10 +11,11 @@ from django.template.loader_tags import (
     BlockContext,
 )
 from django.templatetags.static import static
+from django.urls import resolve
 from django.utils.safestring import mark_safe
 
 
-def render_to_response(nodelist, context, is_ajax=False):
+def render_to_response(request: HttpRequest, context: Context, nodelist: NodeList):
     """Renders a nodelist and returns it with annotated block tags.
 
     Only renders the blocks and returns them as a JSON if is_ajax is True.
@@ -21,7 +25,7 @@ def render_to_response(nodelist, context, is_ajax=False):
 
     # Render if there is no extends tag
     if not extends:
-        return __render_to_response(nodelist, context, is_ajax)
+        return __render_to_response(request, context, nodelist)
 
     compiled_parent = extends.get_parent(context)
 
@@ -48,14 +52,14 @@ def render_to_response(nodelist, context, is_ajax=False):
     # Call Template._render explicitly so the parser context stays
     # the same.
     with context.render_context.push_state(compiled_parent, isolated_context=False):
-        return render_to_response(compiled_parent.nodelist, context, is_ajax)
+        return render_to_response(request, context, compiled_parent.nodelist)
 
 
-def __render_to_response(nodelist, context, is_ajax=False):
+def __render_to_response(request: HttpRequest, context: Context, nodelist: NodeList):
     """Helper function that renders a nodelist and returns it with annotated block tags
     assuming there is no extends tag.
 
-    Only renders the blocks and returns them as a JSON if is_ajax is True.
+    Only renders the blocks and returns them as a JSON if the request was made with AJAX.
     """
     blocks = {}
 
@@ -81,10 +85,9 @@ def __render_to_response(nodelist, context, is_ajax=False):
     __prerender_blocks(nodelist)
 
     # Return a JSON of rendered blocks if the request was made with AJAX
-    if is_ajax:
+    if request.is_ajax():
         return JsonResponse(blocks)
 
-    # Add the django-fluid.js file to the head
     content = nodelist.render(context)
 
     soup = BeautifulSoup(content, "lxml")
@@ -95,19 +98,41 @@ def __render_to_response(nodelist, context, is_ajax=False):
 
     # Add the required jquery.form library to the head if it is not present
     if not script_present("jquery.form"):
-        script = soup.new_tag("script")
-        script["src"] = (
-            "https://cdnjs.cloudflare.com"
-            "/ajax/libs/jquery.form/4.2.2/jquery.form.min.js"
+        head.append(
+            soup.new_tag(
+                "script",
+                attrs={
+                    "src": (
+                        "https://cdnjs.cloudflare.com"
+                        "/ajax/libs/jquery.form/4.2.2/jquery.form.min.js"
+                    ),
+                    "integrity": "sha256-2Pjr1OlpZMY6qesJM68t2v39t+lMLvxwpa8QlRjJroA=",
+                    "crossorigin": "anonymous",
+                },
+            )
         )
-        script["integrity"] = "sha256-2Pjr1OlpZMY6qesJM68t2v39t+lMLvxwpa8QlRjJroA="
-        script["crossorigin"] = "anonymous"
-        head.append(script)
 
     # Add the django-fluid library to the head if it is not present
     if not script_present("django-fluid"):
-        script = soup.new_tag("script")
-        script["src"] = static("django-fluid.js")
-        head.append(script)
+        head.append(
+            soup.new_tag(
+                "script",
+                attrs={
+                    "src": static("django-fluid.js"),
+                },
+            )
+        )
+
+    # Add the correct tags to links and forms
+    for tag in soup.find_all(["a", "form"]):
+        sub_path = tag.get("action", "") or tag.get("href", "")
+        path = urlparse(request.build_absolute_uri(sub_path)).path
+        if path == request.path:
+            tag["data-fluid"] = "same"
+        match = resolve(path)
+        is_fluid = getattr(match.func.view_class, "is_fluid", False)
+        # TODO: Actually check if the view derives
+        if is_fluid:
+            tag["data-fluid"] = "derived"
 
     return HttpResponse(soup.renderContents().decode("utf-8"))

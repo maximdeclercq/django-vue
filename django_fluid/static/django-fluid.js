@@ -60,7 +60,8 @@ function showLoading() {
   $('fluid-block').each(function () {
     let fluidBlock = $(this)
     fluidBlock.children().each(function () {
-      // Wait 300ms before showing loading
+      // Wait 100ms before showing loading
+      let loadingTimeout = 100
       let element = $(this)
       let overlay = $(`
       <div 
@@ -79,15 +80,24 @@ function showLoading() {
       setTimeout(function () {
         // Check if element is still present
         if (fluidBlock && element) {
+          overlay.hide()
+          overlay.fadeIn(100)
           overlay.prependTo(fluidBlock)
         }
-      }, 300)
+      }, loadingTimeout)
     })
   })
 }
 
 /* Element replacement logic */
 function updateElements(data) {
+  // Replace the entire body if the response is not a dictionary
+  if (data.constructor !== Object) {
+    document.open()
+    document.write(data)
+    document.close()
+  }
+
   for (let key in data) {
     if (data.hasOwnProperty(key)) {
       $(`fluid-block[name="${key}"]`).replaceWith(data[key])
