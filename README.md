@@ -1,7 +1,7 @@
 # Django Fluid
 
 A promising attempt to bring the power of single-page applications to Django.
-Make your views quick and fluid with zero configuration! 
+Make your views quick and fluid without any configuration or extensive code changes! 
 
 ## Installation
 
