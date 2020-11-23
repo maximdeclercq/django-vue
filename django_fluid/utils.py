@@ -1,6 +1,7 @@
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
+from django.conf import settings
 from django.http import JsonResponse, HttpResponse, HttpRequest
 from django.template import Context, NodeList
 from django.template.base import TextNode
@@ -11,7 +12,8 @@ from django.template.loader_tags import (
     BlockContext,
 )
 from django.templatetags.static import static
-from django.urls import resolve
+from django.urls import resolve, translate_url, Resolver404
+from django.utils import translation
 from django.utils.safestring import mark_safe
 
 
@@ -129,10 +131,28 @@ def __render_to_response(request: HttpRequest, context: Context, nodelist: NodeL
         path = urlparse(request.build_absolute_uri(sub_path)).path
         if path == request.path:
             tag["data-fluid"] = "same"
-        match = resolve(path)
-        is_fluid = getattr(match.func.view_class, "is_fluid", False)
-        # TODO: Actually check if the view derives
-        if is_fluid:
-            tag["data-fluid"] = "derived"
+
+        # Activate the language the url refers to
+        language = translation.get_language_from_path(path)
+        if not language:
+            language = settings.LANGUAGE_CODE
+        translation.activate(language)
+
+        try:
+            # Resolve the url
+            match = resolve(path)
+        except Resolver404:
+            # Do nothing if the url does not resolve
+            pass
+        else:
+            # Check if the view the url resolved to is fluid
+            view_class = getattr(match.func, "view_class", False)
+            is_fluid = view_class and getattr(view_class, "is_fluid", False)
+            # TODO: Actually check if the view derives
+            if is_fluid:
+                tag["data-fluid"] = "derived"
+
+    # Restore the language the request was made in
+    translation.activate(request.LANGUAGE_CODE)
 
     return HttpResponse(soup.renderContents().decode("utf-8"))

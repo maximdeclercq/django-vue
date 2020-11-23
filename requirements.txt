@@ -1,4 +1,1 @@
-beautifulsoup4~=4.9.3
-django~=3.1.2
-django-configurations==2.2
-lxml~=4.6.1
+-e .
