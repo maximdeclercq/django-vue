@@ -8,4 +8,5 @@ setup(
     author_email="mdc@anter.io",
     packages=find_packages(),
     url="https://gitlab.anter.io",
+    include_package_data=True,
 )
