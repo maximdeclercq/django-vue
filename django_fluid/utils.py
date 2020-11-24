@@ -129,6 +129,7 @@ def __render_to_response(request: HttpRequest, context: Context, nodelist: NodeL
     for tag in soup.find_all(["a", "form"]):
         sub_path = tag.get("action", "") or tag.get("href", "")
         path = urlparse(request.build_absolute_uri(sub_path)).path
+        print(path, request.path)
         if path == request.path:
             tag["data-fluid"] = "same"
 
@@ -149,6 +150,7 @@ def __render_to_response(request: HttpRequest, context: Context, nodelist: NodeL
             view_class = getattr(match.func, "view_class", False)
             is_fluid = view_class and getattr(view_class, "is_fluid", False)
             # TODO: Actually check if the view derives
+            print(view_class)
             if is_fluid:
                 tag["data-fluid"] = "derived"
 
