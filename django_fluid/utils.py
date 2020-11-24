@@ -70,10 +70,15 @@ def __render_to_response(request: HttpRequest, context: Context, nodelist: NodeL
         for i, node in enumerate(parent_nodelist):
             # Prerender block
             if isinstance(node, BlockNode):
+                # Annotate tags of block
+                soup = BeautifulSoup(node.render(context), "lxml")
+                __annotate_tags(request, soup)
+                content = soup.renderContents().decode("utf-8")
+
                 # Wrap block in fluid-block tag
                 blocks[node.name] = (
                     f'<fluid-block name="{node.name}">'
-                    f"    {node.render(context)}"
+                    f"    {content}"
                     f"</fluid-block>"
                 )
                 parent_nodelist[i] = TextNode(mark_safe(blocks[node.name]))
@@ -125,11 +130,16 @@ def __render_to_response(request: HttpRequest, context: Context, nodelist: NodeL
             )
         )
 
+    __annotate_tags(request, soup)
+
+    return HttpResponse(soup.renderContents().decode("utf-8"))
+
+
+def __annotate_tags(request, soup):
     # Add the correct tags to links and forms
     for tag in soup.find_all(["a", "form"]):
         sub_path = tag.get("action", "") or tag.get("href", "")
         path = urlparse(request.build_absolute_uri(sub_path)).path
-        print(repr(path), repr(request.path))
         if path == request.path:
             tag["data-fluid"] = "same"
             continue
@@ -157,5 +167,3 @@ def __render_to_response(request: HttpRequest, context: Context, nodelist: NodeL
 
     # Restore the language the request was made in
     translation.activate(request.LANGUAGE_CODE)
-
-    return HttpResponse(soup.renderContents().decode("utf-8"))
