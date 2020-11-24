@@ -129,9 +129,10 @@ def __render_to_response(request: HttpRequest, context: Context, nodelist: NodeL
     for tag in soup.find_all(["a", "form"]):
         sub_path = tag.get("action", "") or tag.get("href", "")
         path = urlparse(request.build_absolute_uri(sub_path)).path
-        print(path, request.path)
+        print(repr(path), repr(request.path))
         if path == request.path:
             tag["data-fluid"] = "same"
+            continue
 
         # Activate the language the url refers to
         language = translation.get_language_from_path(path)
