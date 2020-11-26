@@ -100,4 +100,4 @@ class VueComponent(VueView):
         context = self.get_context_data(**kwargs)
         response = self.render_to_response(context)
         response.render()
-        return response.content
+        return response.content.decode("utf-8")
