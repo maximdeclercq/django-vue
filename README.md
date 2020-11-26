@@ -23,10 +23,9 @@ INSTALLED_APPS = (
 To use this library, simply add FluidMixin to you template view and your view will become fluid!
 
 ```python
-from django.views.generic import TemplateView
-from django_fluid import FluidMixin
+from django_fluid import VueView
 
-class KittenView(FluidMixin, TemplateView):
+class KittenView(VueView):
     template_name = "kitten.html"
 ```
 

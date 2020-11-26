@@ -1,4 +1,4 @@
 from .decorators import fluid_action
-from .views import FluidMixin, FluidActionMixin
+from .views import VueView
 
-__all__ = ["FluidMixin", "FluidActionMixin", "fluid_action"]
+__all__ = ["VueView"]
