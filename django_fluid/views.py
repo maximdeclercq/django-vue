@@ -91,7 +91,7 @@ class VueView(TemplateView):
 
 class VueComponent(VueView):
     def get_vue_name(self):
-        return slugify(self.__class__.__name__)
+        return slugify(self.__class__.__name__.removesuffix("Component"))
 
     def get_vue_template(self, request, **kwargs):
         self.request = request
