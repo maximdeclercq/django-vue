@@ -80,7 +80,8 @@ class VueView(TemplateView):
                   data() {{
                     return {json.dumps(c.get_vue_data())}
                   }},
-                  template: `{c.get_vue_template(request)}`
+                  template: `{c.get_vue_template(request)}`,
+                  delimiters: ["[[", "]]"],
                 }})
             """
         script.string += 'app.mount("#app")'
