@@ -77,7 +77,6 @@ def __render_to_response(request: HttpRequest, context: Context, nodelist: NodeL
                 block_soup = BeautifulSoup(
                     f"<root>{node.render(context)}</root>", "lxml"
                 )
-                __annotate_block(request, block_soup, node.name)
                 __annotate_links(request, block_soup)
                 blocks[node.name] = re.search(
                     r"(?<=<root>).*(?=</root>)",
@@ -106,18 +105,13 @@ def __render_to_response(request: HttpRequest, context: Context, nodelist: NodeL
     def script_present(name) -> bool:
         return len(soup.find_all("script", src=lambda x: x and name in x)) > 0
 
-    # Add the required jquery.form library to the head if it is not present
-    if not script_present("jquery.form"):
+    # Add the required vue library to the head if it is not present
+    if not script_present("vue"):
         head.append(
             soup.new_tag(
                 "script",
                 attrs={
-                    "src": (
-                        "https://cdnjs.cloudflare.com"
-                        "/ajax/libs/jquery.form/4.2.2/jquery.form.min.js"
-                    ),
-                    "integrity": "sha256-2Pjr1OlpZMY6qesJM68t2v39t+lMLvxwpa8QlRjJroA=",
-                    "crossorigin": "anonymous",
+                    "src": "https://unpkg.com/vue@next",
                 },
             )
         )
@@ -133,25 +127,32 @@ def __render_to_response(request: HttpRequest, context: Context, nodelist: NodeL
             )
         )
 
-    __annotate_links(request, soup)
+    body = soup.find("body")
+    other_scripts = [e.extract() for e in body.find_all("script")]
+    body_content = body.renderContents().decode("utf-8")
+    body.clear()
+
+    body.append(soup.new_tag("div", id="app"))
+
+    script = soup.new_tag("script")
+    script.string = f"""
+        const {{ createApp }} = Vue
+
+        const App = {{
+          data() {{
+            return {{
+              name: "Gregg",
+            }}
+          }},
+          template: `{body_content}`,
+          delimiters: ["[[", "]]"],
+        }}
+        createApp(App).mount("#app")
+    """
+    body.append(script)
+    body.extend(other_scripts)
 
     return HttpResponse(soup.renderContents().decode("utf-8"))
-
-
-def __annotate_block(request: HttpRequest, soup: BeautifulSoup, name: str):
-    block = soup.find("root")
-    if len(block.contents) != 1:
-        block.name = "fluid-block"
-        block = block.wrap(soup.new_tag("root"))
-
-    print(block)
-    assert len(block.contents) == 1, "Block has more than one element after wrapping."
-
-    for e in block.children:
-        if isinstance(e, Tag):
-            e["data-fluid-block-name"] = name
-        elif isinstance(e, NavigableString):
-            e.replace_with(f"<!--block-begin {name}-->{e}<!--block-end-->")
 
 
 def __annotate_links(request: HttpRequest, soup: BeautifulSoup):
