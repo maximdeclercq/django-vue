@@ -38,11 +38,13 @@ class VueView(TemplateView):
         # Add the required vue library to the head if it is not present
         if not script_present("vue"):
             head.append(
+                soup.new_tag("script", attrs={"src": "https://unpkg.com/vue@next"})
+            )
+
+        if not script_present("axios"):
+            head.append(
                 soup.new_tag(
-                    "script",
-                    attrs={
-                        "src": "https://unpkg.com/vue@next",
-                    },
+                    "script", attrs={"src": "https://unpkg.com/axios/dist/axios.min.js"}
                 )
             )
 
@@ -58,14 +60,17 @@ class VueView(TemplateView):
             )
 
         body = soup.find("body")
-        other_scripts = [e.extract() for e in body.find_all("script")]
+
+        styles = [e.extract() for e in body.find_all("style")]
+        scripts = [e.extract() for e in body.find_all("script")]
         body_content = body.renderContents().decode("utf-8")
+
         body.clear()
 
         body.append(soup.new_tag("div", id="app"))
 
-        script = soup.new_tag("script")
-        script.string = f"""
+        vue = soup.new_tag("script")
+        vue.string = f"""
             const app = Vue.createApp({{
               data() {{
                 return {json.dumps(self.get_vue_data())}
@@ -84,9 +89,11 @@ class VueView(TemplateView):
                   delimiters: ["[[", "]]"],
                 }})
             """
-        script.string += 'app.mount("#app")'
-        body.append(script)
-        body.extend(other_scripts)
+        vue.string += 'app.mount("#app")'
+
+        body.extend(styles)
+        body.append(vue)
+        body.extend(scripts)
 
         response.content = soup.renderContents().decode("utf-8")
         return response
