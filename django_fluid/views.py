@@ -1,6 +1,10 @@
+from __future__ import annotations
+
+import json
+from typing import List
+
 from bs4 import BeautifulSoup
 from django.http import HttpRequest
-from django.template.response import TemplateResponse
 from django.templatetags.static import static
 from django.views.generic import TemplateView
 
@@ -9,17 +13,20 @@ class VueView(TemplateView):
     """A mixin that customizes rendering of a view to annotate children of blocks with
     it's name and to return a JSON with only the blocks if an AJAX request is made."""
 
-    components = []
-    data = {}
+    vue_components: List[VueComponentView] = []
+    vue_data: dict = {}
 
-    def dispatch(self, request: HttpRequest, *args, **kwargs):
-        response = super().dispatch(request, *args, **kwargs)
-        if not isinstance(response, TemplateResponse):
-            return response
+    def get_vue_components(self):
+        return self.vue_components
 
+    def get_vue_data(self):
+        return self.vue_data
+
+    def get(self, request: HttpRequest, *args, **kwargs):
+        response = super().get(request, *args, **kwargs)
         response.render()
-
         soup = BeautifulSoup(response.content, "lxml")
+
         head = soup.find("head")
 
         def script_present(name) -> bool:
@@ -56,19 +63,24 @@ class VueView(TemplateView):
 
         script = soup.new_tag("script")
         script.string = f"""
-            const {{ createApp }} = Vue
-
-            const App = {{
+            const app = Vue.createApp({{
               data() {{
-                return {{
-                  name: "Gregg",
-                }}
+                return {json.dumps(self.get_vue_data())}
               }},
               template: `{body_content}`,
               delimiters: ["[[", "]]"],
-            }}
-            createApp(App).mount("#app")
+            }})
         """
+        for c in self.get_vue_components():
+            script.string += f"""
+                app.component("{c.get_vue_name()}", {{
+                  data() {{
+                    return {json.dumps(c.get_vue_data())}
+                  }},
+                  template: `{c.get_vue_template()}`
+                }})
+            """
+        script.string += 'app.mount("#app")'
         body.append(script)
         body.extend(other_scripts)
 
@@ -77,4 +89,13 @@ class VueView(TemplateView):
 
 
 class VueComponentView(VueView):
-    pass
+    vue_name = "component"
+
+    def get_vue_name(self):
+        return self.vue_name
+
+    def get_vue_template(self, **kwargs):
+        context = self.get_context_data(**kwargs)
+        response = self.render_to_response(context)
+        response.render()
+        return response.content

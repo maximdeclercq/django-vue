@@ -1,4 +1,3 @@
-from .decorators import fluid_action
-from .views import VueView
+from .views import VueView, VueComponentView
 
-__all__ = ["VueView"]
+__all__ = ["VueView", "VueComponentView"]
