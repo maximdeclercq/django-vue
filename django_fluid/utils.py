@@ -1,6 +1,9 @@
+import re
+from collections import OrderedDict
+from typing import List
 from urllib.parse import urlparse
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString, Tag
 from django.conf import settings
 from django.http import JsonResponse, HttpResponse, HttpRequest
 from django.template import Context, NodeList
@@ -63,7 +66,7 @@ def __render_to_response(request: HttpRequest, context: Context, nodelist: NodeL
 
     Only renders the blocks and returns them as a JSON if the request was made with AJAX.
     """
-    blocks = {}
+    blocks = OrderedDict()
 
     def __prerender_blocks(parent_nodelist):
         """Prerender blocks with annotated HTML elements."""
@@ -71,16 +74,16 @@ def __render_to_response(request: HttpRequest, context: Context, nodelist: NodeL
             # Prerender block
             if isinstance(node, BlockNode):
                 # Annotate tags of block
-                soup = BeautifulSoup(node.render(context), "lxml")
-                __annotate_tags(request, soup)
-                content = soup.renderContents().decode("utf-8")
-
-                # Wrap block in fluid-block tag
-                blocks[node.name] = (
-                    f'<fluid-block name="{node.name}">'
-                    f"    {content}"
-                    f"</fluid-block>"
+                block_soup = BeautifulSoup(
+                    f"<root>{node.render(context)}</root>", "lxml"
                 )
+                __annotate_block(request, block_soup, node.name)
+                __annotate_links(request, block_soup)
+                blocks[node.name] = re.search(
+                    r"(?<=<root>).*(?=</root>)",
+                    block_soup.renderContents().decode("utf-8"),
+                    re.DOTALL,
+                ).group(0)
                 parent_nodelist[i] = TextNode(mark_safe(blocks[node.name]))
 
             # Recurse into child nodelists
@@ -130,18 +133,34 @@ def __render_to_response(request: HttpRequest, context: Context, nodelist: NodeL
             )
         )
 
-    __annotate_tags(request, soup)
+    __annotate_links(request, soup)
 
     return HttpResponse(soup.renderContents().decode("utf-8"))
 
 
-def __annotate_tags(request, soup):
+def __annotate_block(request: HttpRequest, soup: BeautifulSoup, name: str):
+    block = soup.find("root")
+    if len(block.contents) != 1:
+        block.name = "fluid-block"
+        block = block.wrap(soup.new_tag("root"))
+
+    print(block)
+    assert len(block.contents) == 1, "Block has more than one element after wrapping."
+
+    for e in block.children:
+        if isinstance(e, Tag):
+            e["data-fluid-block-name"] = name
+        elif isinstance(e, NavigableString):
+            e.replace_with(f"<!--block-begin {name}-->{e}<!--block-end-->")
+
+
+def __annotate_links(request: HttpRequest, soup: BeautifulSoup):
     # Add the correct tags to links and forms
     for tag in soup.find_all(["a", "form"]):
         sub_path = tag.get("action", "") or tag.get("href", "")
         path = urlparse(request.build_absolute_uri(sub_path)).path
         if path == request.path:
-            tag["data-fluid"] = "same"
+            tag["data-fluid-target"] = "same"
             continue
 
         # Activate the language the url refers to
@@ -163,7 +182,7 @@ def __annotate_tags(request, soup):
             # TODO: Actually check if the view derives
             print(view_class)
             if is_fluid:
-                tag["data-fluid"] = "derived"
+                tag["data-fluid-target"] = "derived"
 
     # Restore the language the request was made in
     translation.activate(request.LANGUAGE_CODE)

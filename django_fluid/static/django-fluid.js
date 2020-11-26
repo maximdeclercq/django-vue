@@ -15,7 +15,7 @@ window.addEventListener('popstate', function (event) {
 
 /* Rehook logic */
 function registerAjax() {
-  $('a[data-fluid]').each(function () {
+  $('a[data-fluid-target]').each(function () {
     let element = $(this)
     element.off('click.ajax')
     element.on('click.ajax', function (e) {
@@ -35,7 +35,7 @@ function registerAjax() {
         })
     })
   })
-  $('form[data-fluid]').each(function () {
+  $('form[data-fluid-target]').each(function () {
     let element = $(this)
     element.ajaxForm({
       beforeSubmit: function (formData, jqForm, options) {
