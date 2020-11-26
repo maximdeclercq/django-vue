@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
 from django.http import HttpRequest
+from django.template.response import TemplateResponse
 from django.templatetags.static import static
 from django.views.generic import TemplateView
 
@@ -13,6 +14,10 @@ class VueView(TemplateView):
 
     def dispatch(self, request: HttpRequest, *args, **kwargs):
         response = super().dispatch(request, *args, **kwargs)
+        if not isinstance(response, TemplateResponse):
+            return response
+
+        response.render()
 
         soup = BeautifulSoup(response.content, "lxml")
         head = soup.find("head")
