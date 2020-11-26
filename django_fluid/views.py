@@ -92,7 +92,7 @@ class VueView(TemplateView):
 
 class VueComponent(VueView):
     def get_vue_name(self):
-        return dasherize(self.__class__.__name__.removesuffix("Component"))
+        return dasherize(re.sub(r"[Cc]omponent$", self.__class__.__name__))
 
     def get_vue_template(self, request, **kwargs):
         self.request = request
