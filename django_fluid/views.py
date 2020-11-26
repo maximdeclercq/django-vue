@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import json
-from typing import List
+from typing import List, Callable
 
 from bs4 import BeautifulSoup
 from django.http import HttpRequest
 from django.templatetags.static import static
+from django.utils.text import slugify
 from django.views.generic import TemplateView
 
 
@@ -13,7 +14,7 @@ class VueView(TemplateView):
     """A mixin that customizes rendering of a view to annotate children of blocks with
     it's name and to return a JSON with only the blocks if an AJAX request is made."""
 
-    vue_components: List[VueComponentView] = []
+    vue_components: List[VueComponent] = []
     vue_data: dict = {}
 
     def get_vue_components(self):
@@ -77,7 +78,7 @@ class VueView(TemplateView):
                   data() {{
                     return {json.dumps(c.get_vue_data())}
                   }},
-                  template: `{c.get_vue_template()}`
+                  template: `{c.get_vue_template(request)}`
                 }})
             """
         script.string += 'app.mount("#app")'
@@ -88,13 +89,12 @@ class VueView(TemplateView):
         return response
 
 
-class VueComponentView(VueView):
-    vue_name = "component"
-
+class VueComponent(VueView):
     def get_vue_name(self):
-        return self.vue_name
+        return slugify(self.__class__.__name__)
 
-    def get_vue_template(self, **kwargs):
+    def get_vue_template(self, request, **kwargs):
+        self.request = request
         context = self.get_context_data(**kwargs)
         response = self.render_to_response(context)
         response.render()

@@ -1,3 +1,3 @@
-from .views import VueView, VueComponentView
+from .views import VueView, VueComponent
 
-__all__ = ["VueView", "VueComponentView"]
+__all__ = ["VueView", "VueComponent"]
