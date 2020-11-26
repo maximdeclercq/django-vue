@@ -9,6 +9,7 @@ from django.templatetags.static import static
 from django.utils.text import slugify
 from django.views.generic import TemplateView
 from inflection import dasherize
+import re
 
 
 class VueView(TemplateView):
@@ -92,7 +93,7 @@ class VueView(TemplateView):
 
 class VueComponent(VueView):
     def get_vue_name(self):
-        return dasherize(re.sub(r"[Cc]omponent$", self.__class__.__name__))
+        return dasherize(re.sub(r"[Cc]omponent$", "", self.__class__.__name__))
 
     def get_vue_template(self, request, **kwargs):
         self.request = request
