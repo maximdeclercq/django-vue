@@ -3,14 +3,14 @@ from __future__ import annotations
 import json
 import re
 from collections import OrderedDict
-from typing import List, Dict
+from typing import Dict, List
 
 from bs4 import BeautifulSoup
 from django.http import HttpRequest
 from django.template.loader import select_template
 from django.templatetags.static import static
 from django.views.generic import TemplateView
-from inflection import camelize, dasherize
+from inflection import camelize
 
 
 class DjangoVueComponent(TemplateView):
@@ -19,6 +19,8 @@ class DjangoVueComponent(TemplateView):
 
     vue_components: Dict[str, DjangoVueComponent] = {}
     vue_data: Dict[str, any] = {}
+    vue_emits: List[str] = []
+    vue_props: List[str] = []
     vue_routes: OrderedDict[str, DjangoVueComponent] = OrderedDict()
 
     def get_vue_name(self):
@@ -33,8 +35,10 @@ class DjangoVueComponent(TemplateView):
               data() {{
                 return {json.dumps(self.get_vue_data())}
               }},
-              template: `{template or self.get_vue_template(request)}`,
               delimiters: ["[[", "]]"],
+              emits: {json.dumps(self.get_vue_emits())},
+              props: {json.dumps(self.get_vue_props())},
+              template: `{template or self.get_vue_template(request)}`,
             }}
         """
 
@@ -43,6 +47,12 @@ class DjangoVueComponent(TemplateView):
 
     def get_vue_data(self):
         return self.vue_data
+
+    def get_vue_emits(self):
+        return self.vue_emits
+
+    def get_vue_props(self):
+        return self.vue_props
 
     def get_vue_routes(self):
         return self.vue_routes
@@ -57,8 +67,8 @@ class DjangoVueComponent(TemplateView):
         body = soup.find("body")
 
         # TODO: What to do with styles and scripts from other views?
-        styles = [e.extract() for e in body.find_all("style")]
-        scripts = [e.extract() for e in body.find_all("script")]
+        _styles = [e.extract() for e in body.find_all("style")]
+        _scripts = [e.extract() for e in body.find_all("script")]
 
         return body.renderContents().decode("utf-8")
 
