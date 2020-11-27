@@ -1,4 +1,4 @@
-# Django Fluid
+# Django Vue
 
 A promising attempt to bring the power of single-page applications to Django.
 Make your views quick and fluid without any configuration or extensive code changes! 
@@ -23,7 +23,7 @@ INSTALLED_APPS = (
 To use this library, simply add FluidMixin to you template view and your view will become fluid!
 
 ```python
-from django_fluid import VueView
+from django_vue import VueView
 
 class KittenView(VueView):
     template_name = "kitten.html"

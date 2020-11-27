@@ -120,12 +120,12 @@ class DjangoVueComponent(TemplateView):
             )
 
         # Add the django-fluid library to the head if it is not present
-        if not script_present("django-fluid"):
+        if not script_present("django-vue"):
             head.append(
                 soup.new_tag(
                     "script",
                     attrs={
-                        "src": static("django-fluid.js"),
+                        "src": static("django-vue.js"),
                     },
                 )
             )

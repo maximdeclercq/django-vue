@@ -2,7 +2,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="django-fluid",
+    name="django-vue",
     version="1.0",
     author="Maxim De Clercq",
     author_email="mdc@anter.io",
