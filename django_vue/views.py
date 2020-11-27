@@ -7,7 +7,6 @@ from typing import Dict, List
 
 from bs4 import BeautifulSoup
 from django.http import HttpRequest
-from django.template.loader import select_template
 from django.templatetags.static import static
 from django.views.generic import TemplateView
 from inflection import camelize
@@ -156,6 +155,7 @@ class DjangoVueComponent(TemplateView):
             for k, v in self.get_vue_routes().items()
         )
         vue.string = f"""
+            const {{ createSFCModule }} = window["vue3-sfc-loader"];
             {definitions}
             const app = Vue.createApp({self.get_vue_name()})
             {registrations}
@@ -177,8 +177,8 @@ class DjangoVueComponent(TemplateView):
         return response
 
 
-class NativeVueComponent(DjangoVueComponent):
+class SingleFileVueComponent(DjangoVueComponent):
     def get_vue_definition(self, request, *args, **kwargs) -> str:
         return f"""
-            const {self.get_vue_name()} = Vue.defineAsyncComponent(() => window["vue3-sfc-loader"].loadModule({select_template(self.get_template_names())}))
+            const {self.get_vue_name()} = Vue.defineAsyncComponent(() => createSFCModule(`{self.get_vue_template(request)}`, "{self.get_vue_name()}.vue", {{}}))
         """
