@@ -159,7 +159,7 @@ class DjangoVueComponent(DjangoVueView):
     pass
 
 
-class NativeVueView(DjangoVueView):
+class NativeVueComponent(DjangoVueComponent):
     def get_vue_definition(self, request, *args, **kwargs) -> str:
         return f"""
             const {self.get_vue_name()} = Vue.defineAsyncComponent(() => window["vue3-sfc-loader"].loadModule({select_template(self.get_template_names())}))
