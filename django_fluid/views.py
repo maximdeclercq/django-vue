@@ -68,7 +68,7 @@ class DjangoVueView(TemplateView):
             )
 
         # Add the required vue library to the head if it is not present
-        if not script_present("vue"):
+        if not script_present("vue-router"):
             head.append(
                 soup.new_tag(
                     "script",
