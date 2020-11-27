@@ -120,9 +120,12 @@ class DjangoVueView(TemplateView):
         # Construct Vue app
         vue = soup.new_tag("script")
         definitions = "\n".join(
-            c.get_vue_definition(request)
-            for c in list(self.get_vue_components().values())
-            + list(self.get_vue_routes().values())
+            [
+                c.get_vue_definition(request)
+                for c in list(self.get_vue_components().values())
+                + list(self.get_vue_routes().values())
+            ]
+            + [self.get_vue_definition(request, body_content, *args, **kwargs)]
         )
         components = "\n".join(
             f'app.component("{k}", {v.get_vue_name()})'
@@ -134,7 +137,7 @@ class DjangoVueView(TemplateView):
         )
         vue.string = f"""
             {definitions}
-            const app = Vue.createApp({self.get_vue_definition(request, body_content, *args, **kwargs)})
+            const app = Vue.createApp({self.get_vue_name()})
             {components}
             const router = VueRouter.createRouter({{
               history: VueRouter.createWebHashHistory(),
