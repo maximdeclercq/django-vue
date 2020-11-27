@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from collections import OrderedDict
-from typing import List
+from typing import List, Dict
 
 from bs4 import BeautifulSoup
 from django.http import HttpRequest
@@ -17,9 +17,9 @@ class DjangoVueView(TemplateView):
     """A mixin that customizes rendering of a view to annotate children of blocks with
     it's name and to return a JSON with only the blocks if an AJAX request is made."""
 
-    vue_components: dict = {}
-    vue_data: dict = {}
-    vue_routes: OrderedDict = OrderedDict()
+    vue_components: Dict[str, DjangoVueComponent] = {}
+    vue_data: Dict[str, any] = {}
+    vue_routes: OrderedDict[str, DjangoVueView] = OrderedDict()
 
     def get_vue_name(self):
         return camelize(
@@ -153,6 +153,10 @@ class DjangoVueView(TemplateView):
 
         response.content = soup.renderContents().decode("utf-8")
         return response
+
+
+class DjangoVueComponent(DjangoVueView):
+    pass
 
 
 class NativeVueView(DjangoVueView):
