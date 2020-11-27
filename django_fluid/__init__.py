@@ -1,3 +1,3 @@
-from .views import VueView, VueComponent
+from .views import DjangoVueView, DjangoVueComponent, NativeVueComponent
 
-__all__ = ["VueView", "VueComponent"]
+__all__ = ["DjangoVueView", "DjangoVueComponent", "NativeVueComponent"]
