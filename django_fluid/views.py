@@ -13,15 +13,16 @@ from django.views.generic import TemplateView
 from inflection import camelize, dasherize
 
 
-class DjangoVueView(TemplateView):
+class DjangoVueComponent(TemplateView):
     """A mixin that customizes rendering of a view to annotate children of blocks with
     it's name and to return a JSON with only the blocks if an AJAX request is made."""
 
     vue_components: Dict[str, DjangoVueComponent] = {}
     vue_data: Dict[str, any] = {}
-    vue_routes: OrderedDict[str, DjangoVueView] = OrderedDict()
+    vue_routes: OrderedDict[str, DjangoVueComponent] = OrderedDict()
 
     def get_vue_name(self):
+        # TODO: Add package to name?
         return camelize(
             re.sub(r"(component|view)$", "", self.__class__.__name__, re.IGNORECASE)
         )
@@ -123,20 +124,20 @@ class DjangoVueView(TemplateView):
         body = soup.find("body")
         styles = [e.extract() for e in body.find_all("style")]
         scripts = [e.extract() for e in body.find_all("script")]
-        body_content = body.renderContents().decode("utf-8")
         body.clear()
 
         # Construct Vue app
         vue = soup.new_tag("script")
-        definitions = "\n".join(
-            [
-                c.get_vue_definition(request)
-                for c in list(self.get_vue_components().values())
-                + list(self.get_vue_routes().values())
-            ]
-            + [self.get_vue_definition(request, body_content, *args, **kwargs)]
-        )
-        components = "\n".join(
+        # Get unique component instances by their name
+        instances = {
+            c.get_vue_name(): c
+            for c in list(self.get_vue_components().values())
+            + list(self.get_vue_routes().values())
+            + [self]
+        }.values()
+        definitions = "\n".join([c.get_vue_definition(request) for c in instances])
+        # TODO: Do not globally register components but allow subcomponents
+        registrations = "\n".join(
             f'app.component("{k}", {v.get_vue_name()})'
             for k, v in self.get_vue_components().items()
         )
@@ -147,7 +148,7 @@ class DjangoVueView(TemplateView):
         vue.string = f"""
             {definitions}
             const app = Vue.createApp({self.get_vue_name()})
-            {components}
+            {registrations}
             const router = VueRouter.createRouter({{
               history: VueRouter.createWebHashHistory(),
               routes: [{routes}]
@@ -164,10 +165,6 @@ class DjangoVueView(TemplateView):
 
         response.content = soup.renderContents().decode("utf-8")
         return response
-
-
-class DjangoVueComponent(DjangoVueView):
-    pass
 
 
 class NativeVueComponent(DjangoVueComponent):
