@@ -51,7 +51,15 @@ class DjangoVueView(TemplateView):
         context = self.get_context_data(**kwargs)
         response = self.render_to_response(context)
         response.render()
-        return response.content.decode("utf-8")
+        soup = BeautifulSoup(response.content, "lxml")
+
+        body = soup.find("body")
+
+        # TODO: What to do with styles and scripts from other views?
+        styles = [e.extract() for e in body.find_all("style")]
+        scripts = [e.extract() for e in body.find_all("script")]
+
+        return body.renderContents().decode("utf-8")
 
     def get(self, request: HttpRequest, *args, **kwargs):
         response = super().get(request, *args, **kwargs)
@@ -116,6 +124,7 @@ class DjangoVueView(TemplateView):
         styles = [e.extract() for e in body.find_all("style")]
         scripts = [e.extract() for e in body.find_all("script")]
         body_content = body.renderContents().decode("utf-8")
+        body.clear()
 
         # Construct Vue app
         vue = soup.new_tag("script")
@@ -148,7 +157,6 @@ class DjangoVueView(TemplateView):
         """
 
         # Construct new body
-        body.clear()
         body.extend(styles)
         body.append(soup.new_tag("div", id="app"))
         body.append(vue)
