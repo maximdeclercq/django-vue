@@ -102,10 +102,7 @@ class DjangoVueComponent(TemplateView):
                 soup.new_tag(
                     "script",
                     attrs={
-                        "src": (
-                            "https://cdn.jsdelivr.net/npm/vue3-sfc-loader@latest"
-                            "/dist/vue3-sfc-loader.js"
-                        )
+                        "src": "https://unpkg.com/browse/vue3-sfc-loader/dist/vue3-sfc-loader.js"
                     },
                 )
             )
@@ -155,7 +152,7 @@ class DjangoVueComponent(TemplateView):
             for k, v in self.get_vue_routes().items()
         )
         vue.string = f"""
-            const {{ createSFCModule }} = window["vue3-sfc-loader"];
+            const {{ loadModule }} = window["vue3-sfc-loader"];
             {definitions}
             const app = Vue.createApp({self.get_vue_name()})
             {registrations}
@@ -180,5 +177,19 @@ class DjangoVueComponent(TemplateView):
 class SingleFileVueComponent(DjangoVueComponent):
     def get_vue_definition(self, request, *args, **kwargs) -> str:
         return f"""
-            const {self.get_vue_name()} = Vue.defineAsyncComponent(() => createSFCModule(`{self.get_vue_template(request)}`, "{self.get_vue_name()}.vue", {{}}))
+            const {self.get_vue_name()} = Vue.defineAsyncComponent(() => loadModule("{self.get_vue_name()}.vue", {{
+              moduleCache: {{
+                vue: Vue,
+              }},
+              getFile() {{
+                return Promise.resolve(`{self.get_vue_template(request)}`)
+              }},
+            }}))
         """
+
+    def get_vue_template(self, request, **kwargs):
+        self.request = request
+        context = self.get_context_data(**kwargs)
+        response = self.render_to_response(context)
+        response.render()
+        return response.content.decode("utf-8")
