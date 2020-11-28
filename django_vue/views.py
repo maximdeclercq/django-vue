@@ -102,7 +102,7 @@ class DjangoVueComponent(TemplateView):
                 soup.new_tag(
                     "script",
                     attrs={
-                        "src": "https://unpkg.com/browse/vue3-sfc-loader/dist/vue3-sfc-loader.js"
+                        "src": "https://cdn.jsdelivr.net/npm/vue3-sfc-loader/dist/vue3-sfc-loader.js"
                     },
                 )
             )
