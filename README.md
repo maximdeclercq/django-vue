@@ -1,7 +1,7 @@
 # Django Vue
 
-A promising attempt to bring the power of single-page applications to native Django.
-Make your single views behave like vue components without any configuration or extensive code changes! 
+A promising attempt to bring the power of VueJS to native Django.
+Write VueJS code and use VueJS Components inside Django templates without extensive code changes! 
 
 ## Installation
 
@@ -44,10 +44,3 @@ class Home(DjangoVueComponent):
 
     vue_data = {'count': 0}
 ```
-
-## Roadmap
-
-- [ ] Allowing to register custom template tags and nodes (and VariableNode, IfNode and ForNode) to refresh.
-- [ ] Wrap every dynamic content inside a custom HTML tag to replace it when refreshing.
-- [ ] Do some extensive testing on how stable this extension is.
-- [ ] Add documentation about FluidActionMixin.
