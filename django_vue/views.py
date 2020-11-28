@@ -182,7 +182,7 @@ class SingleFileVueComponent(DjangoVueComponent):
                 vue: Vue,
               }},
               getFile(url) {{
-                return Promise.resolve(`{self.get_vue_template(request)}`)
+                return Promise.resolve(/*<!--*/`{self.get_vue_template(request)}`/*-->*/)
               }},
             }}))
         """
@@ -192,4 +192,4 @@ class SingleFileVueComponent(DjangoVueComponent):
         context = self.get_context_data(**kwargs)
         response = self.render_to_response(context)
         response.render()
-        return response.content.decode("utf-8").replace("</script>", "<\\/script>")
+        return response.content.decode("utf-8")
