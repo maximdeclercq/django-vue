@@ -192,4 +192,4 @@ class SingleFileVueComponent(DjangoVueComponent):
         context = self.get_context_data(**kwargs)
         response = self.render_to_response(context)
         response.render()
-        return response.content.decode("utf-8").replace("/", "\\/")
+        return response.content.decode("utf-8").replace("</", "<\\/")
