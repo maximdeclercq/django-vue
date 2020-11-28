@@ -181,7 +181,7 @@ class SingleFileVueComponent(DjangoVueComponent):
               moduleCache: {{
                 vue: Vue,
               }},
-              getFile() {{
+              getFile(url) {{
                 return Promise.resolve(`{self.get_vue_template(request)}`)
               }},
             }}))
