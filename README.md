@@ -1,32 +1,48 @@
 # Django Vue
 
-A promising attempt to bring the power of single-page applications to Django.
-Make your views quick and fluid without any configuration or extensive code changes! 
+A promising attempt to bring the power of single-page applications to native Django.
+Make your single views behave like vue components without any configuration or extensive code changes! 
 
 ## Installation
 
-Install the `django_fluid` package
+Install the `django_vue` package
 ```shell
-pip install git+https://github.com/maximdeclercq/django-fluid
+pip install git+https://github.com/maximdeclercq/django-vue
 ```
 
-Add `django_fluid` to your `INSTALLED_APPS`
+Add `django_vue` to your `INSTALLED_APPS`
 ```python
 INSTALLED_APPS = (
     # ...,
-    'django_fluid',
+    'django_vue',
 )
 ```
 
 ## Usage
 
-To use this library, simply add FluidMixin to you template view and your view will become fluid!
-
 ```python
-from django_vue import VueView
+from django_vue import DjangoVueComponent
+# To be implemented
+from django_vue.decorators import VueMethod
 
-class KittenView(VueView):
-    template_name = "kitten.html"
+class CounterComponent(DjangoVueComponent):
+    template_name = "components/counter.html"
+
+    vue_props = ["count"]
+
+    # To be implemented
+    @VueMethod
+    def inc_counter(self):
+        self.vue_data["count"] += 1
+
+class Home(DjangoVueComponent):
+    template_name = "home.html"
+
+    vue_components = {
+        'counter': CounterComponent(),
+    }
+
+    vue_data = {'count': 0}
 ```
 
 ## Roadmap
