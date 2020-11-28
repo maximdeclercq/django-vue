@@ -34,7 +34,6 @@ class DjangoVueComponent(TemplateView):
               data() {{
                 return {json.dumps(self.get_vue_data())}
               }},
-              delimiters: ["[[", "]]"],
               emits: {json.dumps(self.get_vue_emits())},
               props: {json.dumps(self.get_vue_props())},
               template: `{template or self.get_vue_template(request)}`,
@@ -69,7 +68,10 @@ class DjangoVueComponent(TemplateView):
         _styles = [e.extract() for e in body.find_all("style")]
         _scripts = [e.extract() for e in body.find_all("script")]
 
-        return body.renderContents().decode("utf-8")
+        template = body.renderContents().decode("utf-8")
+
+        # Replace brackets with curly braces so we don't have to override this in Vue
+        return template.replace("[[", "{{").replace("]]", "}}")
 
     def get(self, request: HttpRequest, *args, **kwargs):
         response = super().get(request, *args, **kwargs)
@@ -192,4 +194,8 @@ class SingleFileVueComponent(DjangoVueComponent):
         context = self.get_context_data(**kwargs)
         response = self.render_to_response(context)
         response.render()
-        return response.content.decode("utf-8")
+
+        template = response.content.decode("utf-8")
+
+        # Replace brackets with curly braces so we don't have to override this in Vue
+        return template.replace("[[", "{{").replace("]]", "}}")
