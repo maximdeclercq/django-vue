@@ -186,6 +186,12 @@ class SingleFileVueComponent(DjangoVueComponent):
               getFile(url) {{
                 return Promise.resolve(/*<!--*/`{self.get_vue_template(request)}`/*-->*/)
               }},
+              addStyle(src) {{
+                const style = document.createElement('style');
+                style.textContent = src;
+                const ref = document.head.getElementsByTagName('style')[0] || null;
+                document.head.insertBefore(style, ref);
+              }},
             }}))
         """
 
