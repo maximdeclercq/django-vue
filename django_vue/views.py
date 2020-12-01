@@ -60,7 +60,7 @@ class DjangoVueComponent(TemplateView):
         context = self.get_context_data(**kwargs)
         response = self.render_to_response(context)
         response.render()
-        soup = BeautifulSoup(response.content, "lxml")
+        soup = BeautifulSoup(response.content, "html5lib")
 
         body = soup.find("body")
 
@@ -76,7 +76,7 @@ class DjangoVueComponent(TemplateView):
     def get(self, request: HttpRequest, *args, **kwargs):
         response = super().get(request, *args, **kwargs)
         response.render()
-        soup = BeautifulSoup(response.content, "lxml")
+        soup = BeautifulSoup(response.content, "html5lib")
 
         head = soup.find("head")
 
