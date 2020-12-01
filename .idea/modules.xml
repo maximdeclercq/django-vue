@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/django-fluid.iml" filepath="$PROJECT_DIR$/.idea/django-fluid.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/django-vue.iml" filepath="$PROJECT_DIR$/.idea/django-vue.iml" />
     </modules>
   </component>
 </project>
