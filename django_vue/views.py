@@ -7,7 +7,6 @@ from typing import Dict, List
 
 from bs4 import BeautifulSoup
 from django.http import HttpRequest
-from django.template.loader import select_template
 from django.templatetags.static import static
 from django.views.generic import TemplateView
 from inflection import camelize
@@ -35,7 +34,6 @@ class DjangoVueComponent(TemplateView):
               data() {{
                 return {json.dumps(self.get_vue_data())}
               }},
-              delimiters: ["[[", "]]"],
               emits: {json.dumps(self.get_vue_emits())},
               props: {json.dumps(self.get_vue_props())},
               template: `{template or self.get_vue_template(request)}`,
@@ -70,7 +68,10 @@ class DjangoVueComponent(TemplateView):
         _styles = [e.extract() for e in body.find_all("style")]
         _scripts = [e.extract() for e in body.find_all("script")]
 
-        return body.renderContents().decode("utf-8")
+        template = body.renderContents().decode("utf-8")
+
+        # Replace brackets with curly braces so we don't have to override this in Vue
+        return template.replace("[[", "{{").replace("]]", "}}")
 
     def get(self, request: HttpRequest, *args, **kwargs):
         response = super().get(request, *args, **kwargs)
@@ -103,10 +104,7 @@ class DjangoVueComponent(TemplateView):
                 soup.new_tag(
                     "script",
                     attrs={
-                        "src": (
-                            "https://cdn.jsdelivr.net/npm/vue3-sfc-loader@latest"
-                            "/dist/vue3-sfc-loader.js"
-                        )
+                        "src": "https://cdn.jsdelivr.net/npm/vue3-sfc-loader/dist/vue3-sfc-loader.js"
                     },
                 )
             )
@@ -156,6 +154,7 @@ class DjangoVueComponent(TemplateView):
             for k, v in self.get_vue_routes().items()
         )
         vue.string = f"""
+            const {{ loadModule }} = window["vue3-sfc-loader"];
             {definitions}
             const app = Vue.createApp({self.get_vue_name()})
             {registrations}
@@ -177,8 +176,32 @@ class DjangoVueComponent(TemplateView):
         return response
 
 
-class NativeVueComponent(DjangoVueComponent):
+class SingleFileVueComponent(DjangoVueComponent):
     def get_vue_definition(self, request, *args, **kwargs) -> str:
         return f"""
-            const {self.get_vue_name()} = Vue.defineAsyncComponent(() => window["vue3-sfc-loader"].loadModule({select_template(self.get_template_names())}))
+            const {self.get_vue_name()} = Vue.defineAsyncComponent(() => loadModule("{self.get_vue_name()}.vue", {{
+              moduleCache: {{
+                vue: Vue,
+              }},
+              getFile(url) {{
+                return Promise.resolve(/*<!--*/`{self.get_vue_template(request)}`/*-->*/)
+              }},
+              addStyle(src) {{
+                const style = document.createElement('style');
+                style.textContent = src;
+                const ref = document.head.getElementsByTagName('style')[0] || null;
+                document.head.insertBefore(style, ref);
+              }},
+            }}))
         """
+
+    def get_vue_template(self, request, **kwargs):
+        self.request = request
+        context = self.get_context_data(**kwargs)
+        response = self.render_to_response(context)
+        response.render()
+
+        template = response.content.decode("utf-8")
+
+        # Replace brackets with curly braces so we don't have to override this in Vue
+        return template.replace("[[", "{{").replace("]]", "}}")
