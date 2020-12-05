@@ -137,7 +137,7 @@ class DjangoVueComponentMixin:
         )
         vue.string = self.__clear_indentation(
             f"""{definitions}
-                const router = VueRouter({{ routes: [{routes}] }})
+                const router = new VueRouter({{ routes: [{routes}] }})
                 {self.get_vue_name()}.el = "#app"
                 {self.get_vue_name()}.router = router
                 new Vue({self.get_vue_name()}).$mount("#app")"""
