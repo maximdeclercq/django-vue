@@ -21,7 +21,7 @@ class VueComponentMixin:
     vue_plugins: List[Type[VuePlugin]] = []
     vue_props: List[str] = []
     vue_routes: OrderedDict[str, any] = OrderedDict()
-    
+
     _vue_is_root: bool = False
 
     def get_vue_name(self):
@@ -75,8 +75,11 @@ class VueComponentMixin:
         _scripts = [e.extract() for e in body.find_all("script")]
 
         # Replace brackets with curly braces so we don't have to override this in Vue
-        return str(body).replace("[[", "{{").replace("]]", "}}")
-    
+        template = "".join(
+            line.strip() for line in body.encode_contents().decode("utf-8").split("\n")
+        )
+        return template.replace("[[", "{{").replace("]]", "}}")
+
     def dispatch(self, request, *args, **kwargs):
         if not self._vue_is_root:
             raise RuntimeError(
@@ -157,12 +160,15 @@ class VueComponentMixin:
         body.append(vue)
         body.extend(scripts)
 
-        response.content = str(soup)
+        response.content = "".join(
+            line.strip() for line in soup.encode_contents().decode("utf-8").split("\n")
+        )
         return response
 
     @staticmethod
     def __clear_indentation(s: str) -> str:
         return re.sub(r"\n\s*", "", s, re.IGNORECASE)
+
 
 class VueViewMixin(VueComponentMixin):
     _vue_is_root: bool = True
