@@ -31,17 +31,17 @@ class VueComponentMixin:
         components = ",".join(
             f'"{k}":{v.get_vue_name()}' for k, v in self.get_vue_components().items()
         )
-        return self.__clear_indentation(
-            f"""const {self.get_vue_name()} = {{
-                components: {{{components}}},
-                data() {{
-                  return {json.dumps(self.get_vue_data())}
-                }},
-                emits: {json.dumps(self.get_vue_emits())},
-                props: {json.dumps(self.get_vue_props())},
-                template: `{template or self.get_vue_template(request)}`,
-              }}"""
-        )
+        return f"""
+            const {self.get_vue_name()} = {{
+              components: {{{components}}},
+              data() {{
+                return {json.dumps(self.get_vue_data())}
+              }},
+              emits: {json.dumps(self.get_vue_emits())},
+              props: {json.dumps(self.get_vue_props())},
+              template: `{template or self.get_vue_template(request)}`
+            }};
+        """
 
     def get_vue_components(self):
         return self.vue_components
@@ -146,13 +146,13 @@ class VueComponentMixin:
             f'{{ path: "{k}", component: {v.get_vue_name()} }}'
             for k, v in self.get_vue_routes().items()
         )
-        vue.string = self.__clear_indentation(
-            f"""{definitions}
-                const router = new VueRouter({{ routes: [{routes}] }})
-                {self.get_vue_name()}.el = "#app"
-                {self.get_vue_name()}.router = router
-                new Vue({self.get_vue_name()}).$mount("#app")"""
-        )
+        vue.string = f"""
+            {definitions}
+            const router = new VueRouter({{ routes: [{routes}] }});
+            {self.get_vue_name()}.el = "#app";
+            {self.get_vue_name()}.router = router;
+            new Vue({self.get_vue_name()}).$mount("#app");
+        """
 
         # Construct new body
         body.extend(styles)
@@ -164,10 +164,6 @@ class VueComponentMixin:
             line.strip() for line in soup.encode_contents().decode("utf-8").split("\n")
         )
         return response
-
-    @staticmethod
-    def __clear_indentation(s: str) -> str:
-        return re.sub(r"\n\s*", "", s, re.IGNORECASE)
 
 
 class VueViewMixin(VueComponentMixin):
