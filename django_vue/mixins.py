@@ -79,42 +79,17 @@ class DjangoVueComponentMixin:
 
         head = soup.find("head")
 
-        def script_present(name) -> bool:
-            return len(soup.find_all("script", src=lambda x: x and name in x)) > 0
+        def add_script_if_not_present(identifier: str, src: str) -> bool:
+            if any(soup.find_all("script", src=lambda x: x and name in x)):
+                head.append(soup.new_tag("script", attrs={"src": src}))
 
-        # Add the required vue library to the head if it is not present
-        if not script_present("vue"):
-            head.append(
-                soup.new_tag("script", attrs={"src": "https://unpkg.com/vue@next"})
-            )
-
-        # Add the required vue library to the head if it is not present
-        if not script_present("vue-router"):
-            head.append(
-                soup.new_tag(
-                    "script",
-                    attrs={"src": "https://unpkg.com/vue-router@next"},
-                )
-            )
-
-        # Add the required vue-http-loader library to the head if it is not present
-        if not script_present("vue3-sfc-loader"):
-            head.append(
-                soup.new_tag(
-                    "script",
-                    attrs={
-                        "src": "https://cdn.jsdelivr.net/npm/vue3-sfc-loader/dist/vue3-sfc-loader.js"
-                    },
-                )
-            )
-
-        # Add the required axios library to the head if it is not present
-        if not script_present("axios"):
-            head.append(
-                soup.new_tag(
-                    "script", attrs={"src": "https://unpkg.com/axios/dist/axios.min.js"}
-                )
-            )
+        # Add the required libraries to the head if they are not present
+        add_script_if_not_present("axios", "https://unpkg.com/axios")
+        add_script_if_not_present("vue", "https://unpkg.com/vue@next")
+        add_script_if_not_present("vue-router", "https://unpkg.com/vue-router@next")
+        add_script_if_not_present(
+            "vue3-sfc-loader", "https://cdn.jsdelivr.net/npm/vue3-sfc-loader"
+        )
 
         # Extract styles and scripts from body
         body = soup.find("body")
