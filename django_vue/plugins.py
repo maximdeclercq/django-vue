@@ -1,9 +1,10 @@
 from collections import OrderedDict
+from typing import Dict
 
 
 class VuePlugin:
-    vue_script_sources: OrderedDict[str, str] = OrderedDict()
-    vue_style_sources: OrderedDict[str, str] = OrderedDict()
+    vue_script_sources: Dict[str, str] = OrderedDict()
+    vue_style_sources: Dict[str, str] = OrderedDict()
 
     @classmethod
     def get_vue_script_sources(cls):
