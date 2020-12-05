@@ -116,17 +116,6 @@ class DjangoVueComponentMixin:
                 )
             )
 
-        # Add the django-fluid library to the head if it is not present
-        if not script_present("django-vue"):
-            head.append(
-                soup.new_tag(
-                    "script",
-                    attrs={
-                        "src": static("django-vue.js"),
-                    },
-                )
-            )
-
         # Extract styles and scripts from body
         body = soup.find("body")
         styles = [e.extract() for e in body.find_all("style")]
