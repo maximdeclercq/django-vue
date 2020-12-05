@@ -11,17 +11,18 @@ from django.http import HttpRequest
 from .plugins import VuePlugin
 
 
-class DjangoVueComponentMixin:
+class VueComponentMixin:
     """A mixin that customizes rendering of a view to annotate children of blocks with
     it's name and to return a JSON with only the blocks if an AJAX request is made."""
 
     vue_components: Dict[str, any] = {}
     vue_data: Dict[str, any] = {}
     vue_emits: List[str] = []
-    vue_is_root: bool = False
     vue_plugins: List[Type[VuePlugin]] = []
     vue_props: List[str] = []
     vue_routes: OrderedDict[str, any] = OrderedDict()
+    
+    _vue_is_root: bool = False
 
     def get_vue_name(self):
         return f"c{id(self)}"
@@ -75,12 +76,19 @@ class DjangoVueComponentMixin:
 
         # Replace brackets with curly braces so we don't have to override this in Vue
         return str(body).replace("[[", "{{").replace("]]", "}}")
+    
+    def dispatch(self, request, *args, **kwargs):
+        if not self._vue_is_root:
+            raise RuntimeError(
+                "This Vue component is not supposed to be used as a Django view."
+            )
+        return super().dispatch(request, *args, **kwargs)
 
     def get(self, request: HttpRequest, *args, **kwargs):
         response = super().get(request, *args, **kwargs)
 
         # Only modify rendering for the root component
-        if not self.vue_is_root:
+        if not self._vue_is_root:
             return response
 
         response.render()
@@ -155,3 +163,6 @@ class DjangoVueComponentMixin:
     @staticmethod
     def __clear_indentation(s: str) -> str:
         return re.sub(r"\n\s*", "", s, re.IGNORECASE)
+
+class VueViewMixin(VueComponentMixin):
+    _vue_is_root: bool = True
