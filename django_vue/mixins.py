@@ -90,24 +90,17 @@ class DjangoVueComponentMixin:
 
         head = soup.find("head")
 
-        def add_script_if_not_present(name: str, src: str) -> None:
-            def search(x: str):
-                return re.search(f"\b{name.lower()}\b", x.lower())
+        def search_name(name: str, text: str):
+            return text and re.search(f"\b{name.lower()}\b", text.lower()) is not None
 
-            if any(soup.find_all("script", src=search)):
+        def add_script_if_not_present(name: str, src: str) -> None:
+            if any(soup.find_all("script", src=lambda t: search_name(name, t))):
                 head.append(soup.new_tag("script", attrs={"src": src}))
 
         def add_style_if_not_present(name: str, href: str) -> None:
-            def search(x: str):
-                return re.search(f"\b{name.lower()}\b", x.lower())
-
-            if any(soup.find_all("link", href=search)):
-                head.append(
-                    soup.new_tag(
-                        "link",
-                        attrs={"type": "text/css", "rel": "stylesheet", "href": href},
-                    )
-                )
+            if any(soup.find_all("link", href=lambda t: search_name(name, t))):
+                attrs = {"type": "text/css", "rel": "stylesheet", "href": href}
+                head.append(soup.new_tag("link", attrs=attrs))
 
         # Add the required libraries to the head if they are not present
         add_script_if_not_present("axios", "https://unpkg.com/axios")
