@@ -32,7 +32,7 @@ class DjangoVueComponentMixin:
         )
         return self.__clear_indentation(
             f"""const {self.get_vue_name()} = {{
-                components: {{{components}}}
+                components: {{{components}}},
                 data() {{
                   return {json.dumps(self.get_vue_data())}
                 }},
