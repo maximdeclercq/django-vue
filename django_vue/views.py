@@ -1,12 +1,27 @@
 from __future__ import annotations
 
-from django.views.generic import TemplateView
+from django.views.generic import TemplateView, ListView, DetailView
 
 from .mixins import DjangoVueComponentMixin
 
 
-class DjangoVueComponent(DjangoVueComponentMixin, TemplateView):
+class DjangoVueTemplateView(DjangoVueComponentMixin, TemplateView):
     pass
+
+
+class DjangoVueListView(DjangoVueComponentMixin, ListView):
+    pass
+
+
+class DjangoVueDetailView(DjangoVueComponentMixin, DetailView):
+    pass
+
+
+class DjangoVueComponent(DjangoVueTemplateView):
+    def dispatch(self, request, *args, **kwargs):
+        raise RuntimeError(
+            "This Vue component is not supposed to be used as a Django View."
+        )
 
 
 class SingleFileVueComponent(DjangoVueComponent):
