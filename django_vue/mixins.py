@@ -73,10 +73,8 @@ class DjangoVueComponentMixin:
         _styles = [e.extract() for e in body.find_all("style")]
         _scripts = [e.extract() for e in body.find_all("script")]
 
-        template = body.renderContents().decode("utf-8")
-
         # Replace brackets with curly braces so we don't have to override this in Vue
-        return template.replace("[[", "{{").replace("]]", "}}")
+        return str(body).replace("[[", "{{").replace("]]", "}}")
 
     def get(self, request: HttpRequest, *args, **kwargs):
         response = super().get(request, *args, **kwargs)
@@ -94,11 +92,11 @@ class DjangoVueComponentMixin:
             return text and re.search(f"\b{name.lower()}\b", text.lower()) is not None
 
         def add_script_if_not_present(name: str, src: str) -> None:
-            if any(soup.find_all("script", src=lambda t: search_name(name, t))):
+            if not any(soup.find_all("script", src=lambda t: search_name(name, t))):
                 head.append(soup.new_tag("script", attrs={"src": src}))
 
         def add_style_if_not_present(name: str, href: str) -> None:
-            if any(soup.find_all("link", href=lambda t: search_name(name, t))):
+            if not any(soup.find_all("link", href=lambda t: search_name(name, t))):
                 attrs = {"type": "text/css", "rel": "stylesheet", "href": href}
                 head.append(soup.new_tag("link", attrs=attrs))
 
@@ -151,7 +149,7 @@ class DjangoVueComponentMixin:
         body.append(vue)
         body.extend(scripts)
 
-        response.content = soup.renderContents().decode("utf-8")
+        response.content = str(soup)
         return response
 
     @staticmethod
