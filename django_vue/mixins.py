@@ -35,7 +35,7 @@ class VueComponentMixin:
             const {self.get_vue_name()} = {{
               components: {{{components}}},
               data() {{
-                return {json.dumps(self.get_vue_data())}
+                return {json.dumps(self.get_vue_data())};
               }},
               emits: {json.dumps(self.get_vue_emits())},
               props: {json.dumps(self.get_vue_props())},
@@ -75,10 +75,7 @@ class VueComponentMixin:
         _scripts = [e.extract() for e in body.find_all("script")]
 
         # Replace brackets with curly braces so we don't have to override this in Vue
-        template = "".join(
-            line.strip() for line in body.encode_contents().decode("utf-8").split("\n")
-        )
-        return template.replace("[[", "{{").replace("]]", "}}")
+        return self.__render_soup(body).replace("[[", "{{").replace("]]", "}}")
 
     def dispatch(self, request, *args, **kwargs):
         if not self._vue_is_root:
@@ -151,7 +148,7 @@ class VueComponentMixin:
             const router = new VueRouter({{ routes: [{routes}] }});
             {self.get_vue_name()}.el = "#app";
             {self.get_vue_name()}.router = router;
-            new Vue({self.get_vue_name()}).$mount("#app");
+            new Vue({self.get_vue_name()});
         """
 
         # Construct new body
@@ -160,10 +157,16 @@ class VueComponentMixin:
         body.append(vue)
         body.extend(scripts)
 
-        response.content = "".join(
-            line.strip() for line in soup.encode_contents().decode("utf-8").split("\n")
-        )
+        response.content = self.__render_soup(soup)
         return response
+
+    @classmethod
+    def __render_soup(cls, s: BeautifulSoup):
+        return cls.__clean_html(s.encode_contents().decode("utf-8"))
+
+    @staticmethod
+    def __clean_html(s: str):
+        return "".join(line.strip() for line in s.split("\n"))
 
 
 class VueViewMixin(VueComponentMixin):
