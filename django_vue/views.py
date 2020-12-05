@@ -6,15 +6,15 @@ from .mixins import DjangoVueComponentMixin
 
 
 class DjangoVueTemplateView(DjangoVueComponentMixin, TemplateView):
-    pass
+    vue_is_root = True
 
 
 class DjangoVueListView(DjangoVueComponentMixin, ListView):
-    pass
+    vue_is_root = True
 
 
 class DjangoVueDetailView(DjangoVueComponentMixin, DetailView):
-    pass
+    vue_is_root = True
 
 
 class DjangoVueComponent(DjangoVueTemplateView):

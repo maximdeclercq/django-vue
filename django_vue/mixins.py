@@ -3,12 +3,12 @@ from __future__ import annotations
 import json
 import re
 from collections import OrderedDict
-from typing import Dict, List
+from typing import Dict, List, Type
 
 from bs4 import BeautifulSoup
 from django.http import HttpRequest
-from django.templatetags.static import static
-from inflection import camelize
+
+from .plugins import VuePlugin
 
 
 class DjangoVueComponentMixin:
@@ -18,26 +18,29 @@ class DjangoVueComponentMixin:
     vue_components: Dict[str, any] = {}
     vue_data: Dict[str, any] = {}
     vue_emits: List[str] = []
+    vue_is_root: bool = False
+    vue_plugins: List[Type[VuePlugin]] = []
     vue_props: List[str] = []
     vue_routes: OrderedDict[str, any] = OrderedDict()
 
     def get_vue_name(self):
-        # TODO: Add package to name?
-        return camelize(
-            re.sub(r"(component|view)$", "", self.__class__.__name__, re.IGNORECASE)
-        )
+        return f"c{id(self)}"
 
     def get_vue_definition(self, request, template=None, *args, **kwargs) -> str:
-        return f"""
-            const {self.get_vue_name()} = {{
-              data() {{
-                return {json.dumps(self.get_vue_data())}
-              }},
-              emits: {json.dumps(self.get_vue_emits())},
-              props: {json.dumps(self.get_vue_props())},
-              template: `{template or self.get_vue_template(request)}`,
-            }}
-        """
+        components = ",".join(
+            f'"{k}":{v.get_vue_name()}' for k, v in self.get_vue_components().items()
+        )
+        return self.__clear_indentation(
+            f"""const {self.get_vue_name()} = {{
+                components: {{{components}}}
+                data() {{
+                  return {json.dumps(self.get_vue_data())}
+                }},
+                emits: {json.dumps(self.get_vue_emits())},
+                props: {json.dumps(self.get_vue_props())},
+                template: `{template or self.get_vue_template(request)}`,
+              }}"""
+        )
 
     def get_vue_components(self):
         return self.vue_components
@@ -47,6 +50,9 @@ class DjangoVueComponentMixin:
 
     def get_vue_emits(self):
         return self.vue_emits
+
+    def get_vue_plugins(self):
+        return self.vue_plugins
 
     def get_vue_props(self):
         return self.vue_props
@@ -74,22 +80,49 @@ class DjangoVueComponentMixin:
 
     def get(self, request: HttpRequest, *args, **kwargs):
         response = super().get(request, *args, **kwargs)
+
+        # Only modify rendering for the root component
+        if not self.vue_is_root:
+            return response
+
         response.render()
         soup = BeautifulSoup(response.content, "html5lib")
 
         head = soup.find("head")
 
-        def add_script_if_not_present(identifier: str, src: str) -> bool:
-            if any(soup.find_all("script", src=lambda x: x and name in x)):
+        def add_script_if_not_present(name: str, src: str) -> None:
+            def search(x: str):
+                return re.search(f"\b{name.lower()}\b", x.lower())
+
+            if any(soup.find_all("script", src=search)):
                 head.append(soup.new_tag("script", attrs={"src": src}))
+
+        def add_style_if_not_present(name: str, href: str) -> None:
+            def search(x: str):
+                return re.search(f"\b{name.lower()}\b", x.lower())
+
+            if any(soup.find_all("link", href=search)):
+                head.append(
+                    soup.new_tag(
+                        "link",
+                        attrs={"type": "text/css", "rel": "stylesheet", "href": href},
+                    )
+                )
 
         # Add the required libraries to the head if they are not present
         add_script_if_not_present("axios", "https://unpkg.com/axios")
-        add_script_if_not_present("vue", "https://unpkg.com/vue@next")
-        add_script_if_not_present("vue-router", "https://unpkg.com/vue-router@next")
+        add_script_if_not_present("vue", "https://unpkg.com/vue@latest")
+        add_script_if_not_present("vue-router", "https://unpkg.com/vue-router@latest")
         add_script_if_not_present(
-            "vue3-sfc-loader", "https://cdn.jsdelivr.net/npm/vue3-sfc-loader"
+            "http-vue-loader", "https://unpkg.com/http-vue-loader"
         )
+
+        # Add the libraries from the plugin
+        for plugin in self.vue_plugins:
+            for name, src in plugin.get_vue_script_sources().items():
+                add_script_if_not_present(name, src)
+            for name, href in plugin.get_vue_style_sources().items():
+                add_style_if_not_present(name, href)
 
         # Extract styles and scripts from body
         body = soup.find("body")
@@ -107,27 +140,17 @@ class DjangoVueComponentMixin:
             + [self]
         }.values()
         definitions = "\n".join([c.get_vue_definition(request) for c in instances])
-        # TODO: Do not globally register components but allow subcomponents
-        registrations = "\n".join(
-            f'app.component("{k}", {v.get_vue_name()})'
-            for k, v in self.get_vue_components().items()
-        )
         routes = ",".join(
             f'{{ path: "{k}", component: {v.get_vue_name()} }}'
             for k, v in self.get_vue_routes().items()
         )
-        vue.string = f"""
-            const {{ loadModule }} = window["vue3-sfc-loader"];
-            {definitions}
-            const app = Vue.createApp({self.get_vue_name()})
-            {registrations}
-            const router = VueRouter.createRouter({{
-              history: VueRouter.createWebHashHistory(),
-              routes: [{routes}]
-            }})
-            app.use(router)
-            app.mount("#app")
-        """
+        vue.string = self.__clear_indentation(
+            f"""{definitions}
+                const router = VueRouter({{ routes: [{routes}] }})
+                {self.get_vue_name()}.el = "#app"
+                {self.get_vue_name()}.router = router
+                new Vue({self.get_vue_name()}).$mount("#app")"""
+        )
 
         # Construct new body
         body.extend(styles)
@@ -137,3 +160,7 @@ class DjangoVueComponentMixin:
 
         response.content = soup.renderContents().decode("utf-8")
         return response
+
+    @staticmethod
+    def __clear_indentation(s: str) -> str:
+        return re.sub(r"\n\s*", "", s, re.IGNORECASE)
