@@ -1,30 +1,16 @@
 from __future__ import annotations
 
-from django.views.generic import TemplateView, ListView, DetailView
+from django.views.generic import TemplateView
 
-from .mixins import DjangoVueComponentMixin
-
-
-class DjangoVueTemplateView(DjangoVueComponentMixin, TemplateView):
-    pass
+from .mixins import VueComponentMixin
 
 
-class DjangoVueListView(DjangoVueComponentMixin, ListView):
-    pass
+class SingleFileVueComponent(VueComponentMixin, TemplateView):
+    def __init__(self, template_name=None):
+        super().__init__()
+        if template_name:
+            self.template_name = template_name
 
-
-class DjangoVueDetailView(DjangoVueComponentMixin, DetailView):
-    pass
-
-
-class DjangoVueComponent(DjangoVueTemplateView):
-    def dispatch(self, request, *args, **kwargs):
-        raise RuntimeError(
-            "This Vue component is not supposed to be used as a Django View."
-        )
-
-
-class SingleFileVueComponent(DjangoVueComponent):
     def get_vue_definition(self, request, *args, **kwargs) -> str:
         return f"""
             const {self.get_vue_name()} = Vue.defineAsyncComponent(() => loadModule("{self.get_vue_name()}.vue", {{
@@ -32,7 +18,7 @@ class SingleFileVueComponent(DjangoVueComponent):
                 vue: Vue,
               }},
               getFile(url) {{
-                return Promise.resolve(/*<!--*/`{self.get_vue_template(request)}`/*-->*/)
+                return Promise.resolve(`{self.__html_to_vue_template(self.get_vue_template(request))}`)
               }},
               addStyle(src) {{
                 const style = document.createElement('style');

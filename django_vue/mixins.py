@@ -2,41 +2,45 @@ from __future__ import annotations
 
 import json
 import re
-from collections import OrderedDict
-from typing import Dict, List
 
 from bs4 import BeautifulSoup
 from django.http import HttpRequest
-from django.templatetags.static import static
-from inflection import camelize
+from django.urls.resolvers import URLPattern
+from typing import Dict, List, Type
+
+from .plugins import VuePlugin
 
 
-class DjangoVueComponentMixin:
+class VueComponentMixin:
     """A mixin that customizes rendering of a view to annotate children of blocks with
     it's name and to return a JSON with only the blocks if an AJAX request is made."""
 
     vue_components: Dict[str, any] = {}
     vue_data: Dict[str, any] = {}
     vue_emits: List[str] = []
+    vue_plugins: List[Type[VuePlugin]] = []
     vue_props: List[str] = []
-    vue_routes: OrderedDict[str, any] = OrderedDict()
+    vue_routes: List[URLPattern] = []
+
+    _vue_is_root: bool = False
 
     def get_vue_name(self):
-        # TODO: Add package to name?
-        return camelize(
-            re.sub(r"(component|view)$", "", self.__class__.__name__, re.IGNORECASE)
-        )
+        return f"c{id(self)}"
 
     def get_vue_definition(self, request, template=None, *args, **kwargs) -> str:
+        components = ",".join(
+            f'"{k}":{v.get_vue_name()}' for k, v in self.get_vue_components().items()
+        )
         return f"""
             const {self.get_vue_name()} = {{
+              components: {{{components}}},
               data() {{
-                return {json.dumps(self.get_vue_data())}
+                return {json.dumps(self.get_vue_data())};
               }},
               emits: {json.dumps(self.get_vue_emits())},
               props: {json.dumps(self.get_vue_props())},
-              template: `{template or self.get_vue_template(request)}`,
-            }}
+              template: `{self.__html_to_vue_template(self.get_vue_template(request))}`
+            }};
         """
 
     def get_vue_components(self):
@@ -47,6 +51,9 @@ class DjangoVueComponentMixin:
 
     def get_vue_emits(self):
         return self.vue_emits
+
+    def get_vue_plugins(self):
+        return self.vue_plugins
 
     def get_vue_props(self):
         return self.vue_props
@@ -59,81 +66,115 @@ class DjangoVueComponentMixin:
         context = self.get_context_data(**kwargs)
         response = self.render_to_response(context)
         response.render()
-        soup = BeautifulSoup(response.content, "html5lib")
 
+        # Extract body from soup
+        soup = BeautifulSoup(response.content, "html5lib")
         body = soup.find("body")
 
-        # TODO: What to do with styles and scripts from other views?
-        _styles = [e.extract() for e in body.find_all("style")]
-        _scripts = [e.extract() for e in body.find_all("script")]
-
-        template = body.renderContents().decode("utf-8")
-
         # Replace brackets with curly braces so we don't have to override this in Vue
-        return template.replace("[[", "{{").replace("]]", "}}")
+        return self.__render_soup(body).replace("[[", "{{").replace("]]", "}}")
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self._vue_is_root:
+            raise RuntimeError(
+                "This Vue component is not supposed to be used as a Django view."
+            )
+        return super().dispatch(request, *args, **kwargs)
 
     def get(self, request: HttpRequest, *args, **kwargs):
         response = super().get(request, *args, **kwargs)
+
+        # Only modify rendering for the root component
+        if not self._vue_is_root:
+            return response
+
         response.render()
         soup = BeautifulSoup(response.content, "html5lib")
 
         head = soup.find("head")
 
-        def add_script_if_not_present(identifier: str, src: str) -> bool:
-            if any(soup.find_all("script", src=lambda x: x and name in x)):
+        def search_name(name: str, text: str):
+            return text and re.search(f"\b{name.lower()}\b", text.lower()) is not None
+
+        def add_script_if_not_present(name: str, src: str) -> None:
+            if not any(soup.find_all("script", src=lambda t: search_name(name, t))):
                 head.append(soup.new_tag("script", attrs={"src": src}))
+
+        def add_style_if_not_present(name: str, href: str) -> None:
+            if not any(soup.find_all("link", href=lambda t: search_name(name, t))):
+                attrs = {"type": "text/css", "rel": "stylesheet", "href": href}
+                head.append(soup.new_tag("link", attrs=attrs))
 
         # Add the required libraries to the head if they are not present
         add_script_if_not_present("axios", "https://unpkg.com/axios")
-        add_script_if_not_present("vue", "https://unpkg.com/vue@next")
-        add_script_if_not_present("vue-router", "https://unpkg.com/vue-router@next")
+        add_script_if_not_present("vue", "https://unpkg.com/vue@latest")
+        add_script_if_not_present("vue-router", "https://unpkg.com/vue-router@latest")
         add_script_if_not_present(
-            "vue3-sfc-loader", "https://cdn.jsdelivr.net/npm/vue3-sfc-loader"
+            "http-vue-loader", "https://unpkg.com/http-vue-loader"
         )
 
-        # Extract styles and scripts from body
+        # Add the libraries from the plugin
+        for plugin in self.vue_plugins:
+            for name, src in plugin.get_vue_script_sources().items():
+                add_script_if_not_present(name, src)
+            for name, href in plugin.get_vue_style_sources().items():
+                add_style_if_not_present(name, href)
+
         body = soup.find("body")
-        styles = [e.extract() for e in body.find_all("style")]
-        scripts = [e.extract() for e in body.find_all("script")]
         body.clear()
 
         # Construct Vue app
         vue = soup.new_tag("script")
         # Get unique component instances by their name
-        instances = {
-            c.get_vue_name(): c
-            for c in list(self.get_vue_components().values())
-            + list(self.get_vue_routes().values())
+        vue_routes = {
+            r.pattern: r.callback.view_class(**r.callback.view_initkwargs)
+            for r in self.get_vue_routes()
+        }
+        components = (
+            list(self.get_vue_components().values())
+            + list(vue_routes.values())
             + [self]
-        }.values()
-        definitions = "\n".join([c.get_vue_definition(request) for c in instances])
-        # TODO: Do not globally register components but allow subcomponents
-        registrations = "\n".join(
-            f'app.component("{k}", {v.get_vue_name()})'
-            for k, v in self.get_vue_components().items()
         )
+        instances = {c.get_vue_name(): c for c in components}.values()
+        definitions = "\n".join([c.get_vue_definition(request) for c in instances])
         routes = ",".join(
-            f'{{ path: "{k}", component: {v.get_vue_name()} }}'
-            for k, v in self.get_vue_routes().items()
+            f'{{ path: "{r}", component: {c.get_vue_name()}}}'
+            for r, c in vue_routes.items()
         )
         vue.string = f"""
-            const {{ loadModule }} = window["vue3-sfc-loader"];
             {definitions}
-            const app = Vue.createApp({self.get_vue_name()})
-            {registrations}
-            const router = VueRouter.createRouter({{
-              history: VueRouter.createWebHashHistory(),
-              routes: [{routes}]
-            }})
-            app.use(router)
-            app.mount("#app")
+            const router = new VueRouter({{ routes: [{routes}] }});
+            {self.get_vue_name()}.el = "#app";
+            {self.get_vue_name()}.router = router;
+            new Vue({self.get_vue_name()});
         """
 
         # Construct new body
-        body.extend(styles)
         body.append(soup.new_tag("div", id="app"))
         body.append(vue)
-        body.extend(scripts)
 
-        response.content = soup.renderContents().decode("utf-8")
+        response.content = self.__render_soup(soup)
         return response
+
+    @classmethod
+    def __render_soup(cls, s: BeautifulSoup):
+        return cls.__clean_html(s.encode_contents().decode("utf-8"))
+
+    @staticmethod
+    def __clean_html(s: str):
+        return "".join(line.strip() for line in s.split("\n"))
+
+    @staticmethod
+    def __html_to_vue_template(s: str):
+        return (
+            s.replace("<script", '<component is="script"')
+            .replace("</script>", r"</component>")
+            .replace("<style", '<component is="style"')
+            .replace("</style>", r"</component>")
+            .replace("`", r"\`")
+            .replace("${", r"\${")
+        )
+
+
+class VueViewMixin(VueComponentMixin):
+    _vue_is_root: bool = True
