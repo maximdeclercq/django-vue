@@ -6,6 +6,7 @@ import re
 from bs4 import BeautifulSoup
 from django.http import HttpRequest
 from django.urls.resolvers import URLPattern
+from inflection import dasherize
 from typing import Dict, List, Type
 
 from .plugins import VuePlugin
@@ -15,7 +16,7 @@ class VueComponentMixin:
     """A mixin that customizes rendering of a view to annotate children of blocks with
     it's name and to return a JSON with only the blocks if an AJAX request is made."""
 
-    vue_components: Dict[str, any] = {}
+    vue_components: List[any]
     vue_data: Dict[str, any] = {}
     vue_emits: List[str] = []
     vue_plugins: List[Type[VuePlugin]] = []
@@ -24,22 +25,30 @@ class VueComponentMixin:
 
     _vue_is_root: bool = False
 
-    def get_vue_name(self):
+    def get_vue_id(self):
         return f"c{id(self)}"
 
+    def get_vue_name(self):
+        # Strip last part of class name
+        return dasherize(type(self).__name__).rsplit("-", 1)[0]
+
     def get_vue_definition(self, request, template=None, *args, **kwargs) -> str:
+        # Get instances of components
+        vue_components = [
+            v.view_class(**v.view_initkwargs) for v in self.get_vue_components()
+        ]
         components = ",".join(
-            f'"{k}":{v.get_vue_name()}' for k, v in self.get_vue_components().items()
+            f'"{c.get_vue_name()}":{c.get_vue_id()}' for c in vue_components
         )
         return f"""
-            const {self.get_vue_name()} = {{
+            const {self.get_vue_id()} = {{
               components: {{{components}}},
               data() {{
                 return {json.dumps(self.get_vue_data())};
               }},
               emits: {json.dumps(self.get_vue_emits())},
               props: {json.dumps(self.get_vue_props())},
-              template: `{self.__html_to_vue_template(self.get_vue_template(request))}`
+              template: `{self.get_vue_template(request)}`
             }};
         """
 
@@ -62,17 +71,10 @@ class VueComponentMixin:
         return self.vue_routes
 
     def get_vue_template(self, request, **kwargs):
-        self.request = request
-        context = self.get_context_data(**kwargs)
-        response = self.render_to_response(context)
-        response.render()
-
-        # Extract body from soup
-        soup = BeautifulSoup(response.content, "html5lib")
+        soup = self._get_vue_template_soup(request, **kwargs)
         body = soup.find("body")
 
-        # Replace brackets with curly braces so we don't have to override this in Vue
-        return self.__render_soup(body).replace("[[", "{{").replace("]]", "}}")
+        return self._render_vue_template_soup(body)
 
     def dispatch(self, request, *args, **kwargs):
         if not self._vue_is_root:
@@ -125,54 +127,64 @@ class VueComponentMixin:
 
         # Construct Vue app
         vue = soup.new_tag("script")
-        # Get unique component instances by their name
+        # Get instances of components
+        vue_components = [
+            v.view_class(**v.view_initkwargs) for v in self.get_vue_components()
+        ]
         vue_routes = {
             r.pattern: r.callback.view_class(**r.callback.view_initkwargs)
             for r in self.get_vue_routes()
         }
-        components = (
-            list(self.get_vue_components().values())
-            + list(vue_routes.values())
-            + [self]
-        )
-        instances = {c.get_vue_name(): c for c in components}.values()
+        # Get unique component instances by their name
+        components = vue_components + list(vue_routes.values()) + [self]
+        instances = {c.get_vue_id(): c for c in components}.values()
         definitions = "\n".join([c.get_vue_definition(request) for c in instances])
         routes = ",".join(
-            f'{{ path: "{r}", component: {c.get_vue_name()}}}'
+            f'{{ path: "{r}", component: {c.get_vue_id()}}}'
             for r, c in vue_routes.items()
         )
         vue.string = f"""
             {definitions}
             const router = new VueRouter({{ routes: [{routes}] }});
-            {self.get_vue_name()}.el = "#app";
-            {self.get_vue_name()}.router = router;
-            new Vue({self.get_vue_name()});
+            {self.get_vue_id()}.el = "#app";
+            {self.get_vue_id()}.router = router;
+            new Vue({self.get_vue_id()});
         """
 
         # Construct new body
         body.append(soup.new_tag("div", id="app"))
         body.append(vue)
 
-        response.content = self.__render_soup(soup)
+        response.content = self._render_vue_template_soup(soup)
         return response
 
-    @classmethod
-    def __render_soup(cls, s: BeautifulSoup):
-        return cls.__clean_html(s.encode_contents().decode("utf-8"))
+    def _get_vue_template_soup(self, request, **kwargs):
+        self.request = request
+        context = self.get_context_data(**kwargs)
+        response = self.render_to_response(context)
+        response.render()
 
-    @staticmethod
-    def __clean_html(s: str):
-        return "".join(line.strip() for line in s.split("\n"))
+        # Replace brackets with curly braces so we don't have to override this in Vue
+        content = response.content.decode("utf-8")
+        content = content.replace("[[", "{{").replace("]]", "}}")
 
-    @staticmethod
-    def __html_to_vue_template(s: str):
-        return (
-            s.replace("<script", '<component is="script"')
+        # Escape scripts and styles
+        content = (
+            content.replace("<script", '<component is="script"')
             .replace("</script>", r"</component>")
             .replace("<style", '<component is="style"')
             .replace("</style>", r"</component>")
             .replace("`", r"\`")
             .replace("${", r"\${")
+        )
+
+        # Extract body from soup
+        return BeautifulSoup(content, "html5lib")
+
+    @classmethod
+    def _render_vue_template_soup(cls, s: BeautifulSoup):
+        return "".join(
+            line.strip() for line in s.encode_contents().decode("utf-8").split("\n")
         )
 
 

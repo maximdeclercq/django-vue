@@ -13,12 +13,12 @@ class SingleFileVueComponent(VueComponentMixin, TemplateView):
 
     def get_vue_definition(self, request, *args, **kwargs) -> str:
         return f"""
-            const {self.get_vue_name()} = Vue.defineAsyncComponent(() => loadModule("{self.get_vue_name()}.vue", {{
+            const {self.get_vue_id()} = Vue.defineAsyncComponent(() => loadModule("{self.get_vue_id()}.vue", {{
               moduleCache: {{
                 vue: Vue,
               }},
               getFile(url) {{
-                return Promise.resolve(`{self.__html_to_vue_template(self.get_vue_template(request))}`)
+                return Promise.resolve(`{self.get_vue_template(request)}`)
               }},
               addStyle(src) {{
                 const style = document.createElement('style');
@@ -30,12 +30,5 @@ class SingleFileVueComponent(VueComponentMixin, TemplateView):
         """
 
     def get_vue_template(self, request, **kwargs):
-        self.request = request
-        context = self.get_context_data(**kwargs)
-        response = self.render_to_response(context)
-        response.render()
-
-        template = response.content.decode("utf-8")
-
-        # Replace brackets with curly braces so we don't have to override this in Vue
-        return template.replace("[[", "{{").replace("]]", "}}")
+        soup = self._get_vue_template_soup(request, **kwargs)
+        return self._render_vue_template_soup(soup)
