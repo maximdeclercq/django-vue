@@ -18,7 +18,7 @@ class SingleFileVueComponent(VueComponentMixin, TemplateView):
                 vue: Vue,
               }},
               getFile(url) {{
-                return Promise.resolve(/*<!--*/`{self.get_vue_template(request)}`/*-->*/)
+                return Promise.resolve(`{self.__html_to_vue_template(self.get_vue_template(request))}`)
               }},
               addStyle(src) {{
                 const style = document.createElement('style');

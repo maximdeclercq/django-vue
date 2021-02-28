@@ -39,7 +39,7 @@ class VueComponentMixin:
               }},
               emits: {json.dumps(self.get_vue_emits())},
               props: {json.dumps(self.get_vue_props())},
-              template: `{template or self.get_vue_template(request)}`
+              template: `{self.__html_to_vue_template(self.get_vue_template(request))}`
             }};
         """
 
@@ -66,13 +66,10 @@ class VueComponentMixin:
         context = self.get_context_data(**kwargs)
         response = self.render_to_response(context)
         response.render()
+
+        # Extract body from soup
         soup = BeautifulSoup(response.content, "html5lib")
-
         body = soup.find("body")
-
-        # TODO: What to do with styles and scripts from other views?
-        _styles = [e.extract() for e in body.find_all("style")]
-        _scripts = [e.extract() for e in body.find_all("script")]
 
         # Replace brackets with curly braces so we don't have to override this in Vue
         return self.__render_soup(body).replace("[[", "{{").replace("]]", "}}")
@@ -123,10 +120,7 @@ class VueComponentMixin:
             for name, href in plugin.get_vue_style_sources().items():
                 add_style_if_not_present(name, href)
 
-        # Extract styles and scripts from body
         body = soup.find("body")
-        styles = [e.extract() for e in body.find_all("style")]
-        scripts = [e.extract() for e in body.find_all("script")]
         body.clear()
 
         # Construct Vue app
@@ -156,10 +150,8 @@ class VueComponentMixin:
         """
 
         # Construct new body
-        body.extend(styles)
         body.append(soup.new_tag("div", id="app"))
         body.append(vue)
-        body.extend(scripts)
 
         response.content = self.__render_soup(soup)
         return response
@@ -171,6 +163,17 @@ class VueComponentMixin:
     @staticmethod
     def __clean_html(s: str):
         return "".join(line.strip() for line in s.split("\n"))
+
+    @staticmethod
+    def __html_to_vue_template(s: str):
+        return (
+            s.replace("<script", '<component is="script"')
+            .replace("</script>", r"</component>")
+            .replace("<style", '<component is="style"')
+            .replace("</style>", r"</component>")
+            .replace("`", r"\`")
+            .replace("${", r"\${")
+        )
 
 
 class VueViewMixin(VueComponentMixin):
