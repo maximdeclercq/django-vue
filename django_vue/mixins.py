@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import json
 import re
-from collections import OrderedDict
-from typing import Dict, List, Type
 
 from bs4 import BeautifulSoup
 from django.http import HttpRequest
+from django.urls.resolvers import URLPattern
+from typing import Dict, List, Type
 
 from .plugins import VuePlugin
 
@@ -20,7 +20,7 @@ class VueComponentMixin:
     vue_emits: List[str] = []
     vue_plugins: List[Type[VuePlugin]] = []
     vue_props: List[str] = []
-    vue_routes: OrderedDict[str, any] = OrderedDict()
+    vue_routes: List[URLPattern] = []
 
     _vue_is_root: bool = False
 
@@ -132,16 +132,20 @@ class VueComponentMixin:
         # Construct Vue app
         vue = soup.new_tag("script")
         # Get unique component instances by their name
-        instances = {
-            c.get_vue_name(): c
-            for c in list(self.get_vue_components().values())
-            + list(self.get_vue_routes().values())
+        vue_routes = {
+            r.pattern: r.callback.view_class(**r.callback.view_initkwargs)
+            for r in self.get_vue_routes()
+        }
+        components = (
+            list(self.get_vue_components().values())
+            + list(vue_routes.values())
             + [self]
-        }.values()
+        )
+        instances = {c.get_vue_name(): c for c in components}.values()
         definitions = "\n".join([c.get_vue_definition(request) for c in instances])
         routes = ",".join(
-            f'{{ path: "{k}", component: {v.get_vue_name()} }}'
-            for k, v in self.get_vue_routes().items()
+            f'{{ path: "{r}", component: {c.get_vue_name()}}}'
+            for r, c in vue_routes.items()
         )
         vue.string = f"""
             {definitions}
