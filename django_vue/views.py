@@ -26,7 +26,7 @@ class SingleFileVueComponent(VueComponentMixin, TemplateView):
                 const ref = document.head.getElementsByTagName('style')[0] || null;
                 document.head.insertBefore(style, ref);
               }},
-            }}))
+            }}));
         """
 
     def get_vue_template(self, request, **kwargs):
