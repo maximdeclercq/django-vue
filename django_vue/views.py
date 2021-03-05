@@ -8,6 +8,8 @@ from django_vue import VueComponentMixin
 
 
 class VueSingleFileComponent(VueComponentMixin, TemplateView):
+    _vue_is_root = True
+
     def __init__(self, template_name=None):
         super().__init__()
         if template_name:
