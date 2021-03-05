@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ctypes
 import json
 import re
 
@@ -29,7 +30,7 @@ class VueComponentMixin:
         return hash(type(self).__name__)
 
     def get_vue_id(self):
-        return f"c{hash(self)}"
+        return f"c{ctypes.c_size_t(hash(self)).value}"
 
     def get_vue_name(self):
         # Strip last part of class name
