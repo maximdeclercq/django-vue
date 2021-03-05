@@ -23,5 +23,5 @@ class VueSingleFileComponent(VueComponentMixin, TemplateView):
         if not self.template_name.endswith(".vue"):
             raise ValueError("Only Vue templates are allowed.")
         kwargs = {"template_name": self.template_name}
-        url = reverse("django_vue:component", kwargs=kwargs)
-        return f'const {self.get_vue_id()} = httpVueLoader("{url}.vue");'
+        url = reverse("django_vue:components", kwargs=kwargs)
+        return f"const {self.get_vue_id()} = httpVueLoader({url});"

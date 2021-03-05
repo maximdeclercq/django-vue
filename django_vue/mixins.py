@@ -25,8 +25,11 @@ class VueComponentMixin:
 
     _vue_is_root: bool = False
 
+    def __hash__(self):
+        return hash(type(self).__name__)
+
     def get_vue_id(self):
-        return f"c{id(self)}"
+        return f"c{hash(self)}"
 
     def get_vue_name(self):
         # Strip last part of class name
