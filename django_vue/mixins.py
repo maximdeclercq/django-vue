@@ -16,7 +16,7 @@ class VueComponentMixin:
     """A mixin that customizes rendering of a view to annotate children of blocks with
     it's name and to return a JSON with only the blocks if an AJAX request is made."""
 
-    vue_components: List[any]
+    vue_components: List[any] = []
     vue_data: Dict[str, any] = {}
     vue_emits: List[str] = []
     vue_plugins: List[Type[VuePlugin]] = []
