@@ -19,7 +19,9 @@ class VueSingleFileComponent(VueComponentMixin, TemplateView):
         template_name = self.kwargs.get("template_name", "") or self.template_name
         if not template_name.endswith(".vue"):
             raise ValueError("Only Vue templates are allowed.")
-        return render(self.request, template_name)
+        return render(
+            self.request, template_name, content_type="application/javascript"
+        )
 
     def get_vue_definition(self, request, *args, **kwargs) -> str:
         if not self.template_name.endswith(".vue"):
