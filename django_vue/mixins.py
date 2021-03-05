@@ -156,7 +156,7 @@ class VueComponentMixin:
         body.append(soup.new_tag("div", id="app"))
         body.append(vue)
 
-        response.content = self._render_vue_template_soup(soup)
+        response.content = self._render_template_soup(soup)
         return response
 
     def _get_vue_template_soup(self, request, **kwargs):
@@ -168,8 +168,7 @@ class VueComponentMixin:
 
     @classmethod
     def _render_vue_template_soup(cls, s: BeautifulSoup):
-        lines = s.encode_contents().decode("utf-8").split("\n")
-        content = "".join(line.strip() for line in lines)
+        content = cls._render_template_soup(s)
 
         # Replace brackets with curly braces so we don't have to override this in Vue
         content = content.replace("[[", "{{").replace("]]", "}}")
@@ -185,6 +184,11 @@ class VueComponentMixin:
         )
 
         return content
+
+    @staticmethod
+    def _render_template_soup(s: BeautifulSoup):
+        lines = s.encode_contents().decode("utf-8").split("\n")
+        return "".join(line.strip() for line in lines)
 
 
 class VueViewMixin(VueComponentMixin):
