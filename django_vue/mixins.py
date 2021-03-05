@@ -72,6 +72,7 @@ class VueComponentMixin:
 
     def get_vue_template(self, request, **kwargs):
         soup = self._get_vue_template_soup(request, **kwargs)
+        # Extract body from soup
         body = soup.find("body")
 
         return self._render_vue_template_soup(body)
@@ -163,9 +164,14 @@ class VueComponentMixin:
         context = self.get_context_data(**kwargs)
         response = self.render_to_response(context)
         response.render()
+        return BeautifulSoup(response.content, "html5lib")
+
+    @classmethod
+    def _render_vue_template_soup(cls, s: BeautifulSoup):
+        lines = s.encode_contents().decode("utf-8").split("\n")
+        content = "".join(line.strip() for line in lines)
 
         # Replace brackets with curly braces so we don't have to override this in Vue
-        content = response.content.decode("utf-8")
         content = content.replace("[[", "{{").replace("]]", "}}")
 
         # Escape scripts and styles
@@ -178,14 +184,7 @@ class VueComponentMixin:
             .replace("${", r"\${")
         )
 
-        # Extract body from soup
-        return BeautifulSoup(content, "html5lib")
-
-    @classmethod
-    def _render_vue_template_soup(cls, s: BeautifulSoup):
-        return "".join(
-            line.strip() for line in s.encode_contents().decode("utf-8").split("\n")
-        )
+        return content
 
 
 class VueViewMixin(VueComponentMixin):
