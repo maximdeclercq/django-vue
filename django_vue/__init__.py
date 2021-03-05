@@ -1,4 +1,4 @@
 from .mixins import VueComponentMixin, VueViewMixin
-from .views import SingleFileVueComponent
+from .views import VueSingleFileComponent
 
-__all__ = ["VueComponentMixin", "VueViewMixin", "SingleFileVueComponent"]
+__all__ = ["VueComponentMixin", "VueSingleFileComponent", "VueViewMixin"]
