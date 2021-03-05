@@ -24,4 +24,4 @@ class VueSingleFileComponent(VueComponentMixin, TemplateView):
             raise ValueError("Only Vue templates are allowed.")
         kwargs = {"template_name": self.template_name}
         url = reverse("django_vue:components", kwargs=kwargs)
-        return f"const {self.get_vue_id()} = httpVueLoader({url});"
+        return f"const {self.get_vue_id()} = httpVueLoader(`{url}`);"
