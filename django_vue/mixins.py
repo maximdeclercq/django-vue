@@ -172,22 +172,22 @@ class VueComponentMixin:
 
     @classmethod
     def _render_vue_template_soup(cls, s: BeautifulSoup):
+        # Find all script and style tags
+        scripts = s.find_all("script")
+        styles = s.find_all("style")
+        # Rename the tags to component
+        for t in scripts + styles:
+            t["is"] = t.name
+            # Remove single line comments from scripts
+            if t.name == "script":
+                t.string.replace_with(re.sub(r"//[^\n]+", "", str(t.string)))
+            t.name = "component"
+
+        # Render the soup
         content = cls._render_template_soup(s)
 
         # Replace brackets with curly braces so we don't have to override this in Vue
-        content = content.replace("[[", "{{").replace("]]", "}}")
-
-        # Escape scripts and styles
-        content = (
-            content.replace("<script", '<component is="script"')
-            .replace("</script>", r"</component>")
-            .replace("<style", '<component is="style"')
-            .replace("</style>", r"</component>")
-            .replace("`", r"\`")
-            .replace("${", r"\${")
-        )
-
-        return content
+        return content.replace("[[", "{{").replace("]]", "}}")
 
     @staticmethod
     def _render_template_soup(s: BeautifulSoup):
