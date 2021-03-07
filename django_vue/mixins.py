@@ -7,7 +7,7 @@ import re
 from bs4 import BeautifulSoup
 from django.http import HttpRequest
 from django.urls.resolvers import URLPattern
-from inflection import dasherize
+from inflection import dasherize, underscore
 from typing import Dict, List, Type
 
 from .plugins import VuePlugin
@@ -34,7 +34,7 @@ class VueComponentMixin:
 
     def get_vue_name(self):
         # Strip last part of class name
-        return dasherize(type(self).__name__).rsplit("-", 1)[0]
+        return dasherize(underscore(type(self).__name__)).rsplit("-", 1)[0]
 
     def get_vue_definition(self, request, template=None, *args, **kwargs) -> str:
         # Get instances of components
