@@ -13,7 +13,7 @@ class VueSingleFileComponent(VueComponentMixin, TemplateView):
 
     def get_vue_definition(self, request, *args, **kwargs) -> str:
         return f"""
-            const {self.get_vue_id()} = window["vue2-sfc-loader"].loadModule("{self.get_vue_id()}.vue", {{
+            const {self.get_vue_id()} = () => loadModule("{self.get_vue_id()}.vue", {{
               moduleCache: {{
                 vue: Vue,
               }},

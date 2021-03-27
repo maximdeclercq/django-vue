@@ -150,6 +150,7 @@ class VueComponentMixin:
             for r, c in vue_routes.items()
         )
         vue.string = f"""
+            const {{ loadModule, vueVersion }} = window['vue2-sfc-loader'];
             {definitions}
             const router = new VueRouter({{ routes: [{routes}] }});
             {self.get_vue_id()}.el = "#app";
