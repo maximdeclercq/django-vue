@@ -31,4 +31,4 @@ class VueSingleFileComponent(VueComponentMixin, TemplateView):
 
     def get_vue_template(self, request, **kwargs):
         soup = self._get_vue_template_soup(request, **kwargs)
-        return self._render_vue_template_soup(soup)
+        return self._render_template_soup(soup)
