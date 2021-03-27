@@ -117,7 +117,8 @@ class VueComponentMixin:
         add_script_if_not_present("vue", "https://unpkg.com/vue@latest")
         add_script_if_not_present("vue-router", "https://unpkg.com/vue-router@latest")
         add_script_if_not_present(
-            "http-vue-loader", "https://unpkg.com/http-vue-loader"
+            "vue2-sfc-loader",
+            "https://cdn.jsdelivr.net/npm/vue3-sfc-loader/dist/vue2-sfc-loader.js",
         )
 
         # Add the libraries from the plugin
@@ -179,7 +180,7 @@ class VueComponentMixin:
         for t in scripts + styles:
             t["is"] = t.name
             # Remove single line comments from scripts
-            if t.name == "script":
+            if t.name == "script" and t.string:
                 t.string.replace_with(re.sub(r"//[^\n]+", "", str(t.string)))
             t.name = "component"
 

@@ -1,31 +1,34 @@
 from __future__ import annotations
 
-from django.shortcuts import render
-from django.urls import reverse
 from django.views.generic import TemplateView
 
 from django_vue import VueComponentMixin
 
 
 class VueSingleFileComponent(VueComponentMixin, TemplateView):
-    _vue_is_root = True
-
-    def __init__(self, template_name=None):
+    def __init__(self, template_name: str = None):
         super().__init__()
         if template_name:
             self.template_name = template_name
 
-    def get(self, *args, **kwargs):
-        template_name = self.kwargs.get("template_name", "") or self.template_name
-        if not template_name.endswith(".vue"):
-            raise ValueError("Only Vue templates are allowed.")
-        return render(
-            self.request, template_name, content_type="application/javascript"
-        )
-
     def get_vue_definition(self, request, *args, **kwargs) -> str:
-        if not self.template_name.endswith(".vue"):
-            raise ValueError("Only Vue templates are allowed.")
-        kwargs = {"template_name": self.template_name}
-        url = reverse("django_vue:components", kwargs=kwargs)
-        return f"const {self.get_vue_id()} = httpVueLoader(`{url}`);"
+        return f"""
+            const {self.get_vue_id()} = window["vue2-sfc-loader"].loadModule("{self.get_vue_id()}.vue", {{
+              moduleCache: {{
+                vue: Vue,
+              }},
+              getFile(url) {{
+                return Promise.resolve(`{self.get_vue_template(request)}`)
+              }},
+              addStyle(src) {{
+                const style = document.createElement('style');
+                style.textContent = src;
+                const ref = document.head.getElementsByTagName('style')[0] || null;
+                document.head.insertBefore(style, ref);
+              }},
+            }});
+        """
+
+    def get_vue_template(self, request, **kwargs):
+        soup = self._get_vue_template_soup(request, **kwargs)
+        return self._render_vue_template_soup(soup)
