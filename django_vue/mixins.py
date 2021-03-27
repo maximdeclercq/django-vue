@@ -179,8 +179,9 @@ class VueComponentMixin:
         # Rename the tags to component
         for t in scripts + styles:
             t["is"] = t.name
-            # Remove single line comments from scripts
+            # Remove single line comments from scripts and escape backticks
             if t.name == "script" and t.string:
+                t.string.replace_with(re.sub(r"`", "\\`", str(t.string)))
                 t.string.replace_with(re.sub(r"//[^\n]+", "", str(t.string)))
             t.name = "component"
 
