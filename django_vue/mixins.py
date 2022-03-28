@@ -114,8 +114,8 @@ class VueComponentMixin:
 
         # Add the required libraries to the head if they are not present
         add_script_if_not_present("axios", "https://unpkg.com/axios")
-        add_script_if_not_present("vue", "https://unpkg.com/vue@latest")
-        add_script_if_not_present("vue-router", "https://unpkg.com/vue-router@latest")
+        add_script_if_not_present("vue", "https://unpkg.com/vue@2")
+        add_script_if_not_present("vue-router", "https://unpkg.com/vue-router@3")
         add_script_if_not_present(
             "vue2-sfc-loader",
             "https://cdn.jsdelivr.net/npm/vue3-sfc-loader/dist/vue2-sfc-loader.js",
